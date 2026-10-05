@@ -987,6 +987,8 @@ const id = {
       gemini3Ready: "Gemini 3 Siap",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "Model Lainnya",
       proxy: "Proksi",
       proxyPlaceholder: "mis. http://127.0.0.1:7890",
       proxySaved: "Proksi disimpan",

@@ -81,27 +81,9 @@ import {
 } from "./quota-colors";
 import { isWeeklyQuotaBucket } from "@/modules/cloud-account/utils/quota-groups";
 import { openAccountValidationLink } from "@/modules/cloud-account/actions/cloud";
+import { formatModelDisplayName } from "@/modules/cloud-account/utils/model-display";
 
 type ModelQuotaEntry = [string, CloudQuotaModelInfo];
-
-const GEMINI_LEGACY_MODEL_PATTERN = /gemini-[12](\.|$|-)/i;
-const GEMINI_PRO_COMBINED_MODEL_ID = "gemini-3.1-pro-low/high";
-
-const MODEL_DISPLAY_REPLACEMENTS: Array<[string, string]> = [
-  [GEMINI_PRO_COMBINED_MODEL_ID, "Gemini 3.1 Pro (Low/High)"],
-  ["gemini-3.1-pro-preview", "Gemini 3.1 Pro Preview"],
-  ["gemini-3-pro-image", "Gemini 3 Pro Image"],
-  ["gemini-3.1-pro", "Gemini 3.1 Pro"],
-  ["gemini-3-pro", "Gemini 3 Pro"],
-  ["gemini-3-flash", "Gemini 3 Flash"],
-  ["claude-sonnet-4-6-thinking", "Claude 4.6 Sonnet (Thinking)"],
-  ["claude-sonnet-4-6", "Claude 4.6 Sonnet"],
-  ["claude-sonnet-4-5-thinking", "Claude 4.5 Sonnet (Thinking)"],
-  ["claude-sonnet-4-5", "Claude 4.5 Sonnet"],
-  ["claude-opus-4-6-thinking", "Claude 4.6 Opus (Thinking)"],
-  ["claude-opus-4-5-thinking", "Claude 4.5 Opus (Thinking)"],
-  ["claude-3-5-sonnet", "Claude 3.5 Sonnet"],
-];
 
 function formatCreditsExpiry(expiryDate: string): string {
   if (!expiryDate) {
@@ -114,21 +96,6 @@ function formatCreditsExpiry(expiryDate: string): string {
   } catch {
     return expiryDate;
   }
-}
-
-function formatModelDisplayName(modelName: string): string {
-  let displayName = modelName.replace("models/", "");
-  for (const [source, target] of MODEL_DISPLAY_REPLACEMENTS) {
-    displayName = displayName.replace(source, target);
-  }
-
-  return displayName
-    .replace(/-/g, " ")
-    .split(" ")
-    .map((word) =>
-      word.length > 2 ? word.charAt(0).toUpperCase() + word.slice(1) : word,
-    )
-    .join(" ");
 }
 
 export function useInstalledTargets() {
@@ -250,18 +217,37 @@ export function CloudAccountCard({
   );
 
   const geminiModels = Object.entries(mergedModelQuotas)
-    .filter(
-      ([name]) =>
-        name.includes("gemini") && !GEMINI_LEGACY_MODEL_PATTERN.test(name),
-    )
+    .filter(([name]) => name.includes("gemini"))
     .sort((a, b) => b[1].percentage - a[1].percentage);
 
   const claudeModels = Object.entries(mergedModelQuotas)
     .filter(([name]) => name.includes("claude"))
     .sort((a, b) => b[1].percentage - a[1].percentage);
 
+  const gptModels = Object.entries(mergedModelQuotas)
+    .filter(
+      ([name]) =>
+        !name.includes("gemini") &&
+        !name.includes("claude") &&
+        (name.includes("gpt") || name.startsWith("gpt-")),
+    )
+    .sort((a, b) => b[1].percentage - a[1].percentage);
+
+  const otherModels = Object.entries(mergedModelQuotas)
+    .filter(
+      ([name]) =>
+        !name.includes("gemini") &&
+        !name.includes("claude") &&
+        !name.includes("gpt") &&
+        !name.startsWith("gpt-"),
+    )
+    .sort((a, b) => b[1].percentage - a[1].percentage);
+
   const hasVisibleQuotaModels =
-    geminiModels.length > 0 || claudeModels.length > 0;
+    geminiModels.length > 0 ||
+    claudeModels.length > 0 ||
+    gptModels.length > 0 ||
+    otherModels.length > 0;
   const weeklyQuotaItems = selectWeeklyQuotaItems(account.quota?.quota_groups);
   const detailedGroups = account.quota?.quota_groups ?? [];
   const hasDetailedQuota = detailedGroups.some((group) =>
@@ -279,17 +265,19 @@ export function CloudAccountCard({
           <div className="bg-border/50 h-px flex-1" />
         </div>
         {models.map(([modelName, info]) => {
+          const modelDisplayName = formatModelDisplayName(
+            modelName,
+            info?.display_name,
+          );
           return (
             <div
               key={modelName}
               className="group/item hover:bg-muted/60 hover:border-border/60 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-transparent px-2 py-1.5 text-sm transition-all duration-150"
-              title={`${formatModelDisplayName(modelName)} · ${formatResetTimeTitleText(info.resetTime)}`}
+              title={`${modelDisplayName} · ${formatResetTimeTitleText(info.resetTime)}`}
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <span className="text-muted-foreground group-hover/item:text-foreground flex min-w-0 items-center truncate font-semibold transition-colors">
-                  <span className="truncate">
-                    {formatModelDisplayName(modelName)}
-                  </span>
+                  <span className="truncate">{modelDisplayName}</span>
                 </span>
               </div>
               <div className="flex flex-col items-end gap-0.5 shrink-0">
@@ -314,7 +302,7 @@ export function CloudAccountCard({
                     aria-valuenow={info.percentage}
                     aria-valuemin={0}
                     aria-valuemax={100}
-                    aria-label={`${formatModelDisplayName(modelName)} quota remaining`}
+                    aria-label={`${modelDisplayName} quota remaining: ${info.percentage}%, resets in ${formatResetTimeLabelText(info.resetTime)}`}
                   >
                     <div
                       className={cn(
@@ -564,19 +552,26 @@ export function CloudAccountCard({
                 </span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-64" align="end">
+            <DropdownMenuContent
+              className="w-64 max-w-[calc(100vw-2rem)]"
+              align="end"
+            >
               <DropdownMenuLabel>
                 {t("cloud.card.modelVisibility")}
               </DropdownMenuLabel>
               <div className="max-h-64 overflow-auto px-2 py-1">
-                {allModelEntries.map(([modelName]) => {
+                {allModelEntries.map(([modelName, info]) => {
                   const isVisible =
                     config?.model_visibility?.[modelName] !== false;
+                  const modelDisplayName = formatModelDisplayName(
+                    modelName,
+                    info?.display_name,
+                  );
                   return (
                     <DropdownMenuItem
                       key={modelName}
                       onSelect={(e) => e.preventDefault()}
-                      className="flex cursor-pointer items-center gap-2"
+                      className="flex cursor-pointer items-center gap-2 min-w-0"
                     >
                       <Checkbox
                         checked={isVisible}
@@ -593,8 +588,11 @@ export function CloudAccountCard({
                           }
                         }}
                       />
-                      <span className="truncate text-xs" title={modelName}>
-                        {formatModelDisplayName(modelName)}
+                      <span
+                        className="min-w-0 flex-1 truncate text-xs"
+                        title={modelDisplayName}
+                      >
+                        {modelDisplayName}
                       </span>
                     </DropdownMenuItem>
                   );
@@ -838,10 +836,17 @@ export function CloudAccountCard({
                 t("cloud.card.groupGoogleGemini"),
                 geminiModels,
               )}
-              <div className="pt-1" />
               {renderQuotaModelGroup(
                 t("cloud.card.groupAnthropicClaude"),
                 claudeModels,
+              )}
+              {renderQuotaModelGroup(
+                t("cloud.card.groupGpt", "GPT"),
+                gptModels,
+              )}
+              {renderQuotaModelGroup(
+                t("cloud.card.groupOtherModels", "Other Models"),
+                otherModels,
               )}
             </div>
           ) : hasDetailedQuota ? null : (
@@ -1178,27 +1183,40 @@ export function CompactCloudAccountCard({
           />
         ) : compactModels.length > 0 ? (
           <div className="mt-1 flex items-center gap-1">
-            {compactModels.map(([modelName, info]) => (
-              <TooltipProvider key={modelName}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="bg-muted h-1.5 w-12 overflow-hidden rounded-full">
+            {compactModels.map(([modelName, info]) => {
+              const modelDisplayName = formatModelDisplayName(
+                modelName,
+                info?.display_name,
+              );
+              return (
+                <TooltipProvider key={modelName}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <div
-                        className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(info.percentage)}`}
-                        style={{
-                          width: `${clampQuotaPercentage(info.percentage)}%`,
-                        }}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">
-                      {formatModelDisplayName(modelName)}: {info.percentage}%
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ))}
+                        role="progressbar"
+                        aria-valuenow={clampQuotaPercentage(info.percentage)}
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-label={`${modelDisplayName} quota remaining`}
+                        className="bg-muted h-1.5 w-12 overflow-hidden rounded-full"
+                      >
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(info.percentage)}`}
+                          style={{
+                            width: `${clampQuotaPercentage(info.percentage)}%`,
+                          }}
+                        />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">
+                        {modelDisplayName}: {info.percentage}%
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            })}
           </div>
         ) : null}
       </div>

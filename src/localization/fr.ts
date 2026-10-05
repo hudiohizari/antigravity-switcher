@@ -937,6 +937,8 @@ const fr = {
       gemini3Ready: "Pret pour Gemini 3",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "Autres modèles",
       proxy: "Proxy",
       proxyPlaceholder: "ex. http://127.0.0.1:7890",
       proxySaved: "Proxy enregistre",

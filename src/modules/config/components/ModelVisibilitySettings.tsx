@@ -1,19 +1,37 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useAppConfig } from '@/modules/config/hooks/useAppConfig';
-import { useCloudAccounts } from '@/modules/cloud-account/hooks/useCloudAccounts';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
-import { Loader2, Search, RotateCcw, Save } from 'lucide-react';
-import { filter, flatMap, includes, size, sortBy, sumBy, uniq, values } from 'lodash-es';
-import type { CloudAccount } from '@/modules/cloud-account/types';
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAppConfig } from "@/modules/config/hooks/useAppConfig";
+import { useCloudAccounts } from "@/modules/cloud-account/hooks/useCloudAccounts";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Loader2, Search, RotateCcw, Save } from "lucide-react";
+import {
+  filter,
+  flatMap,
+  includes,
+  size,
+  sortBy,
+  sumBy,
+  uniq,
+  values,
+} from "lodash-es";
+import type { CloudAccount } from "@/modules/cloud-account/types";
+import { formatModelDisplayName } from "@/modules/cloud-account/utils/model-display";
 
-function collectAvailableModelIds(accounts: CloudAccount[] | undefined): string[] {
+function collectAvailableModelIds(
+  accounts: CloudAccount[] | undefined,
+): string[] {
   if (!accounts) {
     return [];
   }
@@ -32,7 +50,15 @@ function collectAvailableModelIds(accounts: CloudAccount[] | undefined): string[
 function filterModelIdsByQuery(modelIds: string[], query: string): string[] {
   const normalizedSearchQuery = query.toLowerCase();
 
-  return filter(modelIds, (modelId) => includes(modelId.toLowerCase(), normalizedSearchQuery));
+  return filter(
+    modelIds,
+    (modelId) =>
+      includes(modelId.toLowerCase(), normalizedSearchQuery) ||
+      includes(
+        formatModelDisplayName(modelId).toLowerCase(),
+        normalizedSearchQuery,
+      ),
+  );
 }
 
 export function ModelVisibilitySettings() {
@@ -40,8 +66,10 @@ export function ModelVisibilitySettings() {
   const { config, saveConfig } = useAppConfig();
   const { data: accounts, isLoading: accountsLoading } = useCloudAccounts();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [modelVisibilityMap, setModelVisibilityMap] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [modelVisibilityMap, setModelVisibilityMap] = useState<
+    Record<string, boolean>
+  >({});
   const [providerGroupingEnabled, setProviderGroupingEnabled] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
@@ -66,7 +94,9 @@ export function ModelVisibilitySettings() {
   }, [availableModelIds, searchQuery]);
 
   const hiddenModelCount = useMemo(() => {
-    return sumBy(values(modelVisibilityMap), (isVisible) => (isVisible === false ? 1 : 0));
+    return sumBy(values(modelVisibilityMap), (isVisible) =>
+      isVisible === false ? 1 : 0,
+    );
   }, [modelVisibilityMap]);
 
   const isModelVisible = (modelId: string): boolean => {
@@ -93,7 +123,7 @@ export function ModelVisibilitySettings() {
       };
       await saveConfig(nextConfig);
     } catch (error) {
-      console.error('Failed to save model visibility settings:', error);
+      console.error("Failed to save model visibility settings:", error);
     } finally {
       setIsSavingSettings(false);
     }
@@ -119,7 +149,7 @@ export function ModelVisibilitySettings() {
       <Card>
         <CardContent className="flex items-center justify-center p-6">
           <Loader2 className="h-6 w-6 animate-spin" />
-          <span className="ml-2">{t('common.loading')}</span>
+          <span className="ml-2">{t("common.loading")}</span>
         </CardContent>
       </Card>
     );
@@ -129,19 +159,23 @@ export function ModelVisibilitySettings() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <span>{t('settings.modelVisibility.title')}</span>
+          <span>{t("settings.modelVisibility.title")}</span>
           <Badge variant="secondary">
-            {t('settings.providerGroupings.models', { count: filteredModelIds.length })}
+            {t("settings.providerGroupings.models", {
+              count: filteredModelIds.length,
+            })}
           </Badge>
         </CardTitle>
-        <CardDescription>{t('settings.modelVisibility.description')}</CardDescription>
+        <CardDescription>
+          {t("settings.modelVisibility.description")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Search */}
         <div className="relative">
           <Search className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 transform" />
           <Input
-            placeholder={t('settings.modelVisibility.searchPlaceholder')}
+            placeholder={t("settings.modelVisibility.searchPlaceholder")}
             value={searchQuery}
             onChange={(event) => handleSearchQueryChange(event.target.value)}
             className="pl-10"
@@ -152,10 +186,10 @@ export function ModelVisibilitySettings() {
         <div className="flex items-center justify-between rounded-lg border p-3">
           <div className="space-y-0.5">
             <Label htmlFor="provider-groupings" className="text-sm font-medium">
-              {t('settings.providerGroupings.enabled')}
+              {t("settings.providerGroupings.enabled")}
             </Label>
             <p className="text-muted-foreground text-xs">
-              {t('settings.providerGroupings.description')}
+              {t("settings.providerGroupings.description")}
             </p>
           </div>
           <Switch
@@ -170,8 +204,8 @@ export function ModelVisibilitySettings() {
           {filteredModelIds.length === 0 ? (
             <div className="text-muted-foreground py-8 text-center">
               {searchQuery
-                ? t('settings.modelVisibility.noModelsFound')
-                : t('settings.modelVisibility.noModels')}
+                ? t("settings.modelVisibility.noModelsFound")
+                : t("settings.modelVisibility.noModels")}
             </div>
           ) : (
             filteredModelIds.map((modelId) => {
@@ -179,7 +213,7 @@ export function ModelVisibilitySettings() {
               return (
                 <div
                   key={modelId}
-                  className="hover:bg-muted/50 flex items-center space-x-3 rounded p-2"
+                  className="hover:bg-muted/50 flex items-center space-x-3 rounded p-2 transition-colors"
                 >
                   <Checkbox
                     id={`model-${modelId}`}
@@ -190,13 +224,14 @@ export function ModelVisibilitySettings() {
                   />
                   <label
                     htmlFor={`model-${modelId}`}
-                    className="flex-1 cursor-pointer text-sm font-medium"
+                    className="flex-1 min-w-0 cursor-pointer text-sm font-medium truncate"
+                    title={formatModelDisplayName(modelId)}
                   >
-                    {modelId}
+                    {formatModelDisplayName(modelId)}
                   </label>
                   {!isVisible && (
                     <Badge variant="secondary" className="text-xs">
-                      {t('settings.modelVisibility.hidden')}
+                      {t("settings.modelVisibility.hidden")}
                     </Badge>
                   )}
                 </div>
@@ -214,7 +249,7 @@ export function ModelVisibilitySettings() {
             className="flex items-center gap-2"
           >
             <RotateCcw className="h-4 w-4" />
-            {t('settings.modelVisibility.reset')}
+            {t("settings.modelVisibility.reset")}
           </Button>
           <Button
             onClick={saveVisibilitySettings}
@@ -227,8 +262,8 @@ export function ModelVisibilitySettings() {
               <Save className="h-4 w-4" />
             )}
             {isSavingSettings
-              ? t('settings.modelVisibility.saving')
-              : t('settings.modelVisibility.save')}
+              ? t("settings.modelVisibility.saving")
+              : t("settings.modelVisibility.save")}
           </Button>
         </div>
 
@@ -236,14 +271,15 @@ export function ModelVisibilitySettings() {
         <div className="text-muted-foreground border-t pt-2 text-sm">
           <div className="flex justify-between">
             <span>
-              {t('settings.modelVisibility.totalModels')}: {availableModelIds.length}
+              {t("settings.modelVisibility.totalModels")}:{" "}
+              {availableModelIds.length}
             </span>
             <span>
-              {t('settings.modelVisibility.visibleModels')}:{' '}
+              {t("settings.modelVisibility.visibleModels")}:{" "}
               {availableModelIds.length - hiddenModelCount}
             </span>
             <span>
-              {t('settings.modelVisibility.hiddenModels')}: {hiddenModelCount}
+              {t("settings.modelVisibility.hiddenModels")}: {hiddenModelCount}
             </span>
           </div>
         </div>

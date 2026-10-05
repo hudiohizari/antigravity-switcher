@@ -215,7 +215,7 @@ describe("Tray Handler Functionality", () => {
       expect(lines).toContain("5h Quota: 85%");
     });
 
-    it("formats high, image, and claude models when present", () => {
+    it("formats high, image, and claude models dynamically when present", () => {
       const texts = getTrayTexts("en");
       const account = createMockAccount({
         quota: {
@@ -236,10 +236,101 @@ describe("Tray Handler Functionality", () => {
         },
       });
 
-      const lines = handlerModule.getQuotaText(account, texts);
+      const lines = handlerModule.formatTrayQuotaLines(account, texts);
       expect(lines).toContain("Gemini High: 90%");
       expect(lines).toContain("Gemini Image: 75%");
-      expect(lines).toContain("Claude 4.6: 60%");
+      expect(lines).toContain("Claude 3.7: 60%");
+      // Backward-compatible alias produces identical results
+      expect(handlerModule.getQuotaText(account, texts)).toEqual(lines);
+    });
+
+    it("formats Claude models concisely with Opus taking precedence over Sonnet", () => {
+      const texts = getTrayTexts("en");
+
+      // Sonnet 4.6 drops variant
+      const sonnetAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-sonnet-4-6": { percentage: 100, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(sonnetAcc, texts)).toContain(
+        "Claude 4.6: 100%",
+      );
+
+      // Sonnet 4.5
+      const sonnet45Acc = createMockAccount({
+        quota: {
+          models: {
+            "claude-sonnet-4-5": { percentage: 60, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(sonnet45Acc, texts)).toContain(
+        "Claude 4.5: 60%",
+      );
+
+      // Sonnet 4.6 Thinking strips (Thinking)
+      const sonnetThinkingAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-sonnet-4-6-thinking": { percentage: 90, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(sonnetThinkingAcc, texts)).toContain(
+        "Claude 4.6: 90%",
+      );
+
+      // Opus 4.6 retains Opus variant
+      const opusAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-opus-4-6": { percentage: 85, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(opusAcc, texts)).toContain(
+        "Claude 4.6 Opus: 85%",
+      );
+
+      // Opus 4.6 Thinking strips (Thinking)
+      const opusThinkingAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-opus-4-6-thinking": { percentage: 85, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(opusThinkingAcc, texts)).toContain(
+        "Claude 4.6 Opus: 85%",
+      );
+
+      // Haiku 4.5 retains Haiku variant
+      const haikuAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-haiku-4-5": { percentage: 50, resetTime: "" },
+          },
+        },
+      });
+      expect(handlerModule.formatTrayQuotaLines(haikuAcc, texts)).toContain(
+        "Claude 4.5 Haiku: 50%",
+      );
+
+      // Multi-model precedence: Opus > Sonnet
+      const multiAcc = createMockAccount({
+        quota: {
+          models: {
+            "claude-sonnet-4-6": { percentage: 90, resetTime: "" },
+            "claude-opus-4-6": { percentage: 85, resetTime: "" },
+          },
+        },
+      });
+      const multiLines = handlerModule.formatTrayQuotaLines(multiAcc, texts);
+      expect(multiLines).toContain("Claude 4.6 Opus: 85%");
+      expect(multiLines.some((l) => l.includes("Claude 4.6:"))).toBe(false);
     });
 
     it("formats dynamic models when standard model keywords are absent", () => {
@@ -858,7 +949,7 @@ describe("Tray Handler Functionality", () => {
               percentage: 92,
               resetTime: "2026-09-09T20:00:00Z",
             },
-            "claude-3-7-sonnet": {
+            "claude-sonnet-4-6": {
               percentage: 76,
               resetTime: "2026-09-09T20:00:00Z",
             },

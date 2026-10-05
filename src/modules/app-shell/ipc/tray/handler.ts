@@ -17,6 +17,10 @@ import { AutoSwitchService } from "@/modules/cloud-account/services/AutoSwitchSe
 import { runWithSwitchGuard } from "@/modules/antigravity-runtime/switch/switchGuard";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import { isAntigravityTargetInstalled } from "@/shared/platform/paths";
+import {
+  formatTrayClaudeLabel,
+  selectBestTrayClaudeModel,
+} from "@/modules/cloud-account/utils/model-display";
 
 export interface TargetAccountsMap {
   classic: CloudAccount | null;
@@ -212,9 +216,9 @@ export function syncTrayWithActiveAccount(): Promise<void> {
   return inFlightSync;
 }
 
-export function getQuotaText(
+export function formatTrayQuotaLines(
   account: CloudAccount | null,
-  texts: TrayTexts,
+  texts: TrayTexts = getTrayTexts("en"),
 ): string[] {
   if (!account) return [`${texts.quota}: --`];
   if (!account.quota) return [`${texts.quota}: ${texts.unknown_quota}`];
@@ -243,20 +247,24 @@ export function getQuotaText(
   if (models && Object.keys(models).length > 0) {
     let gHigh: number | null = null;
     let gImage: number | null = null;
-    let claude: number | null = null;
 
     for (const [key, val] of Object.entries(models)) {
       const k = key.toLowerCase();
       if (k.includes("high") && gHigh === null) gHigh = val.percentage;
       else if (k.includes("image") && gImage === null) gImage = val.percentage;
-      else if (k.includes("claude") && claude === null) claude = val.percentage;
     }
+
+    const bestClaude = selectBestTrayClaudeModel(models);
 
     if (gHigh !== null) lines.push(`Gemini High: ${gHigh}%`);
     if (gImage !== null) lines.push(`Gemini Image: ${gImage}%`);
-    if (claude !== null) lines.push(`Claude 4.6: ${claude}%`);
+    if (bestClaude !== null) {
+      lines.push(
+        `${formatTrayClaudeLabel(bestClaude.key, bestClaude.display_name)} ${bestClaude.percentage}%`,
+      );
+    }
 
-    if (gHigh === null && gImage === null && claude === null) {
+    if (gHigh === null && gImage === null && bestClaude === null) {
       for (const [key, val] of Object.entries(models).slice(0, 3)) {
         const name = val.display_name || key;
         lines.push(`${name}: ${val.percentage}%`);
@@ -270,6 +278,8 @@ export function getQuotaText(
 
   return lines;
 }
+
+export const getQuotaText = formatTrayQuotaLines;
 
 export function initTray(
   mainWindow: BrowserWindow,

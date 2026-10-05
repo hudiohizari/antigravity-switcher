@@ -983,6 +983,8 @@ const tr = {
       gemini3Ready: "Gemini 3 Hazır",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "Diğer Modeller",
       proxy: "Proxy",
       proxyPlaceholder: "örn. http://127.0.0.1:7890",
       proxySaved: "Proxy kaydedildi",

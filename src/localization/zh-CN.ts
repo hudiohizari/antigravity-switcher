@@ -898,6 +898,8 @@ const zhCn = {
       gemini3Ready: "Gemini 3 就绪",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "其他模型",
       proxy: "代理",
       proxyPlaceholder: "例如 http://127.0.0.1:7890",
       proxySaved: "代理已保存",

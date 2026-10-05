@@ -21,7 +21,7 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     id: "claude-4.6-opus-thinking",
     displayName: "Claude 4.6 Opus (Thinking)",
     pattern: /(?:claude-opus-4-6-thinking|claude-opus-4-6)/i,
-    maxTokens: 200_000,
+    maxTokens: 160_000,
     isAuthoritative: true,
   },
   // Claude 4.6 Sonnet (Thinking)
@@ -30,7 +30,7 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     displayName: "Claude 4.6 Sonnet (Thinking)",
     pattern:
       /(?:claude-sonnet-4-6-thinking|claude-sonnet-4-6|claude-3-7-sonnet)/i,
-    maxTokens: 200_000,
+    maxTokens: 160_000,
     isAuthoritative: true,
   },
   // Claude 4.5 Opus (Thinking)
@@ -38,7 +38,7 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     id: "claude-4.5-opus-thinking",
     displayName: "Claude 4.5 Opus (Thinking)",
     pattern: /(?:claude-opus-4-5-thinking|claude-opus-4-5)/i,
-    maxTokens: 200_000,
+    maxTokens: 160_000,
     isAuthoritative: true,
   },
   // Claude 4.5 Sonnet (Thinking)
@@ -46,7 +46,7 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     id: "claude-4.5-sonnet-thinking",
     displayName: "Claude 4.5 Sonnet (Thinking)",
     pattern: /(?:claude-sonnet-4-5-thinking|claude-sonnet-4-5)/i,
-    maxTokens: 200_000,
+    maxTokens: 160_000,
     isAuthoritative: true,
   },
   // Claude 3.5 Sonnet
@@ -55,7 +55,7 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     displayName: "Claude 3.5 Sonnet",
     pattern:
       /(?:claude-(?:3-5|3\.5)-sonnet|MODEL_PLACEHOLDER_M26|MODEL_PLACEHOLDER_M34)/i,
-    maxTokens: 200_000,
+    maxTokens: 160_000,
     isAuthoritative: true,
   },
   // Gemini 3.8 Flash (High)
@@ -81,10 +81,21 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     displayName: "Gemini 3.1 Pro",
     pattern:
       /(?:gemini-(?:3\.1|3|2\.5|2\.0)-pro|gemini-pro|MODEL_PLACEHOLDER_M29)/i,
-    maxTokens: 2_000_000,
+    maxTokens: 256_000,
+    isAuthoritative: true,
+  },
+  // GPT OSS 120B
+  {
+    id: "gpt-oss-120b",
+    displayName: "GPT OSS 120B",
+    pattern: /(?:^|[-_/])gpt-oss-120b(?:[-_/]|$)/i,
+    maxTokens: 128_000,
     isAuthoritative: true,
   },
 ];
+
+export const CLAUDE_BOUNDARY_REGEX = /(?:^|[-_/])claude(?:[-_/]|$)/i;
+export const GEMINI_BOUNDARY_REGEX = /(?:^|[-_/])gemini(?:[-_/]|$)/i;
 
 export const FALLBACK_MODEL_CEILING: ModelCeilingDefinition = {
   id: "unknown-model",
@@ -117,6 +128,75 @@ export function resolveModelContextWindow(rawModel?: string): ModelCeilingInfo {
         isAuthoritative: def.isAuthoritative,
       };
     }
+  }
+
+  if (CLAUDE_BOUNDARY_REGEX.test(trimmed)) {
+    const cleaned = trimmed.replace(/^models\//i, "");
+    const dynamicMatch = cleaned.match(
+      /^claude-(sonnet|opus|haiku)-(\d+)-(\d+)(?:-(thinking))?$/i,
+    );
+    let displayName = "Claude (Dynamic)";
+    if (dynamicMatch) {
+      const [, rawVariant, major, minor, thinking] = dynamicMatch;
+      const variant =
+        rawVariant.charAt(0).toUpperCase() + rawVariant.slice(1).toLowerCase();
+      displayName = `Claude ${major}.${minor} ${variant}${thinking ? " (Thinking)" : ""}`;
+    } else {
+      const legacyMatch = cleaned.match(
+        /^claude-(\d+)-(\d+)-(sonnet|opus|haiku)(?:-(thinking))?$/i,
+      );
+      if (legacyMatch) {
+        const [, major, minor, rawVariant, thinking] = legacyMatch;
+        const variant =
+          rawVariant.charAt(0).toUpperCase() +
+          rawVariant.slice(1).toLowerCase();
+        displayName = `Claude ${major}.${minor} ${variant}${thinking ? " (Thinking)" : ""}`;
+      }
+    }
+
+    return {
+      id: trimmed,
+      displayName,
+      maxTokens: 160_000,
+      isAuthoritative: true,
+    };
+  }
+
+  if (GEMINI_BOUNDARY_REGEX.test(trimmed)) {
+    const cleaned = trimmed.replace(/^models\//i, "");
+    const match = cleaned.match(/^gemini(?:-(\d+(?:\.\d+)?))?(?:-(.+))?$/i);
+    let displayName = "Gemini (Dynamic)";
+    if (match) {
+      const [, version, variant] = match;
+      if (version && variant) {
+        const formattedVariant = variant
+          .split("-")
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
+          .join(" ");
+        displayName = `Gemini ${version} ${formattedVariant}`;
+      } else if (variant) {
+        const formattedVariant = variant
+          .split("-")
+          .map(
+            (word) =>
+              word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
+          )
+          .join(" ");
+        displayName = `Gemini ${formattedVariant}`;
+      } else if (version) {
+        displayName = `Gemini ${version}`;
+      }
+    }
+
+    return {
+      id: trimmed,
+      displayName,
+      maxTokens: 256_000,
+      isAuthoritative: true,
+    };
   }
 
   return {

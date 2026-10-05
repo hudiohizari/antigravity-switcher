@@ -172,6 +172,110 @@ describe('weekly warmup candidate selection', () => {
       ),
     ).toEqual([]);
   });
+
+  describe('dynamic Claude model selection', () => {
+    it('selects available non-thinking Claude model when mixed models exist', () => {
+      const account = makeAccount('mixed-account', 'Claude Models', 'claude-weekly');
+      account.quota!.models = {
+        'claude-opus-4-6': { percentage: 80, resetTime: '' },
+        'gemini-3-flash': { percentage: 100, resetTime: '' },
+      };
+
+      const candidates = selectWeeklyWarmupCandidates(
+        [account],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidates[0].model).toBe('claude-opus-4-6');
+    });
+
+    it('prioritizes non-thinking base model over thinking variant to save thinking budget', () => {
+      const accountOpus = makeAccount('opus-account', 'Claude Models', 'claude-weekly');
+      accountOpus.quota!.models = {
+        'claude-opus-4-6-thinking': { percentage: 80, resetTime: '' },
+        'claude-opus-4-6': { percentage: 80, resetTime: '' },
+      };
+      const candidatesOpus = selectWeeklyWarmupCandidates(
+        [accountOpus],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidatesOpus[0].model).toBe('claude-opus-4-6');
+
+      const accountSonnet = makeAccount('sonnet-account', 'Claude Models', 'claude-weekly');
+      accountSonnet.quota!.models = {
+        'claude-sonnet-4-5-thinking': { percentage: 80, resetTime: '' },
+        'claude-sonnet-4-5': { percentage: 80, resetTime: '' },
+      };
+      const candidatesSonnet = selectWeeklyWarmupCandidates(
+        [accountSonnet],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidatesSonnet[0].model).toBe('claude-sonnet-4-5');
+    });
+
+    it('falls back to thinking model if only thinking model is provisioned', () => {
+      const account = makeAccount('thinking-only', 'Claude Models', 'claude-weekly');
+      account.quota!.models = {
+        'claude-opus-4-6-thinking': { percentage: 80, resetTime: '' },
+      };
+
+      const candidates = selectWeeklyWarmupCandidates(
+        [account],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidates[0].model).toBe('claude-opus-4-6-thinking');
+    });
+
+    it('selects haiku model when haiku is provisioned', () => {
+      const account = makeAccount('haiku-account', 'Claude Models', 'claude-weekly');
+      account.quota!.models = {
+        'claude-haiku-4-5': { percentage: 80, resetTime: '' },
+      };
+
+      const candidates = selectWeeklyWarmupCandidates(
+        [account],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidates[0].model).toBe('claude-haiku-4-5');
+    });
+
+    it('falls back to claude-sonnet-4-6 when account quota models contains no Claude variants', () => {
+      const account = makeAccount('empty-quota-account', 'Claude Models', 'claude-weekly');
+      account.quota!.models = {
+        'gemini-3-flash': { percentage: 100, resetTime: '' },
+      };
+
+      const candidates = selectWeeklyWarmupCandidates(
+        [account],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidates[0].model).toBe('claude-sonnet-4-6');
+    });
+
+    it('falls back to claude-sonnet-4-6 when account.quota has no models property', () => {
+      const account = makeAccount('no-models-prop', 'Claude Models', 'claude-weekly');
+      delete (account.quota as any).models;
+
+      const candidates = selectWeeklyWarmupCandidates(
+        [account],
+        CONFIG,
+        emptyHistory,
+        RESET_TIMESTAMP,
+      );
+      expect(candidates[0].model).toBe('claude-sonnet-4-6');
+    });
+  });
 });
 
 describe('WeeklyWarmupService.run', () => {

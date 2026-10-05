@@ -980,6 +980,8 @@ const ru = {
       gemini3Ready: "Gemini 3 готов",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "Другие модели",
       proxy: "Прокси",
       proxyPlaceholder: "напр. http://127.0.0.1:7890",
       proxySaved: "Прокси сохранён",

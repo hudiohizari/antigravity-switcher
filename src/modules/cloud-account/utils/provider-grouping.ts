@@ -3,12 +3,12 @@
  * and calculating aggregated statistics.
  */
 
-import { flatMap, groupBy, keys, map, min, sortBy, sumBy } from 'lodash-es';
-import { roundQuotaPercentage } from '@/modules/cloud-account/utils/quota-display';
+import { flatMap, groupBy, keys, map, min, sortBy, sumBy } from "lodash-es";
+import { roundQuotaPercentage } from "@/modules/cloud-account/utils/quota-display";
 import {
   aggregateQuotaModelFamilies,
   aggregateVisibleQuotaModelFamilies,
-} from '@/modules/cloud-account/utils/quota-model-families';
+} from "@/modules/cloud-account/utils/quota-model-families";
 
 export interface ProviderInfo {
   name: string;
@@ -17,20 +17,25 @@ export interface ProviderInfo {
 }
 
 export const PROVIDER_REGISTRY: Record<string, ProviderInfo> = {
-  'claude-': {
-    name: 'Claude',
-    company: 'Anthropic',
-    color: '#D97757',
+  "claude-": {
+    name: "Claude",
+    company: "Anthropic",
+    color: "#D97757",
   },
-  'gemini-': {
-    name: 'Gemini',
-    company: 'Google',
-    color: '#4285F4',
+  "gemini-": {
+    name: "Gemini",
+    company: "Google",
+    color: "#4285F4",
+  },
+  "gpt-": {
+    name: "GPT",
+    company: "OpenAI",
+    color: "#10A37F",
   },
   others: {
-    name: 'Other',
-    company: 'Various',
-    color: '#6B7280',
+    name: "Other",
+    company: "Various",
+    color: "#6B7280",
   },
 };
 
@@ -46,12 +51,13 @@ const HEALTH_STATUS_THRESHOLDS = {
  * Detect the provider key for a given model name based on prefix matching.
  */
 export function detectProvider(modelName: string): ProviderKey {
+  const normalizedName = modelName.replace(/^models\//, "");
   const matchedPrefix = keys(PROVIDER_REGISTRY).find(
-    (prefix) => prefix !== 'others' && modelName.startsWith(prefix),
+    (prefix) => prefix !== "others" && normalizedName.startsWith(prefix),
   );
 
   if (!matchedPrefix) {
-    return 'others';
+    return "others";
   }
 
   return matchedPrefix as ProviderKey;
@@ -69,6 +75,7 @@ export interface ModelQuota {
   id: string;
   percentage: number;
   resetTime: string;
+  displayName?: string;
 }
 
 export interface ProviderStats {
@@ -85,7 +92,8 @@ function toRoundedAverage(models: ModelQuota[]): number {
     return 0;
   }
 
-  const averagePercentage = sumBy(models, (model) => model.percentage) / models.length;
+  const averagePercentage =
+    sumBy(models, (model) => model.percentage) / models.length;
 
   return roundQuotaPercentage(averagePercentage);
 }
@@ -103,17 +111,19 @@ function parseResetTimestamp(resetTime: string): number | null {
   return timestamp;
 }
 
-function resolveAccountHealthStatus(overallPercentage: number): AccountStats['healthStatus'] {
+function resolveAccountHealthStatus(
+  overallPercentage: number,
+): AccountStats["healthStatus"] {
   if (overallPercentage < HEALTH_STATUS_THRESHOLDS.critical) {
-    return 'critical';
+    return "critical";
   }
   if (overallPercentage < HEALTH_STATUS_THRESHOLDS.limited) {
-    return 'limited';
+    return "limited";
   }
   if (overallPercentage < HEALTH_STATUS_THRESHOLDS.degraded) {
-    return 'degraded';
+    return "degraded";
   }
-  return 'healthy';
+  return "healthy";
 }
 
 function buildProviderStats(
@@ -140,19 +150,23 @@ export function calculateProviderStats(
   models: ModelQuota[],
   visibilitySettings: Record<string, boolean>,
 ): ProviderStats {
-  const visibleModels = models.filter((m) => visibilitySettings[m.id] !== false);
+  const visibleModels = models.filter(
+    (m) => visibilitySettings[m.id] !== false,
+  );
 
   if (visibleModels.length === 0) {
     return buildProviderStats(providerKey, models, [], null);
   }
 
-  const resetTimes = map(visibleModels, (model) => parseResetTimestamp(model.resetTime)).filter(
-    (timestamp): timestamp is number => timestamp !== null,
-  );
+  const resetTimes = map(visibleModels, (model) =>
+    parseResetTimestamp(model.resetTime),
+  ).filter((timestamp): timestamp is number => timestamp !== null);
 
   const earliestTimestamp = min(resetTimes);
   const earliestReset =
-    earliestTimestamp !== undefined ? new Date(earliestTimestamp).toISOString() : null;
+    earliestTimestamp !== undefined
+      ? new Date(earliestTimestamp).toISOString()
+      : null;
 
   return buildProviderStats(providerKey, models, visibleModels, earliestReset);
 }
@@ -162,18 +176,24 @@ export interface AccountStats {
   totalModels: number;
   visibleModels: number;
   overallPercentage: number;
-  healthStatus: 'healthy' | 'degraded' | 'limited' | 'critical';
+  healthStatus: "healthy" | "degraded" | "limited" | "critical";
 }
 
 /**
  * Group models by provider and calculate per-provider and overall account stats.
  */
 export function groupModelsByProvider(
-  models: Record<string, { percentage: number; resetTime: string }>,
+  models: Record<
+    string,
+    { percentage: number; resetTime: string; display_name?: string }
+  >,
   visibilitySettings: Record<string, boolean>,
 ): AccountStats {
   const aggregatedModels = aggregateQuotaModelFamilies(models);
-  const visibleAggregatedModels = aggregateVisibleQuotaModelFamilies(models, visibilitySettings);
+  const visibleAggregatedModels = aggregateVisibleQuotaModelFamilies(
+    models,
+    visibilitySettings,
+  );
   const aggregatedVisibility = Object.fromEntries(
     Object.keys(aggregatedModels).map((modelName) => [
       modelName,
@@ -186,15 +206,26 @@ export function groupModelsByProvider(
       id: modelName,
       percentage: info.percentage,
       resetTime: info.resetTime,
+      displayName: info.display_name,
     },
   }));
 
-  const providerModelGroups = groupBy(modelQuotas, (modelQuota) => modelQuota.providerKey);
+  const providerModelGroups = groupBy(
+    modelQuotas,
+    (modelQuota) => modelQuota.providerKey,
+  );
   const providerStatsList = map(providerModelGroups, (groupedQuotas, key) => {
     const providerKey = key as ProviderKey;
-    const providerModels = map(groupedQuotas, (groupedQuota) => groupedQuota.quota);
+    const providerModels = map(
+      groupedQuotas,
+      (groupedQuota) => groupedQuota.quota,
+    );
 
-    return calculateProviderStats(providerKey, providerModels, aggregatedVisibility);
+    return calculateProviderStats(
+      providerKey,
+      providerModels,
+      aggregatedVisibility,
+    );
   });
 
   // Sort: known providers first (claude-, gemini-), then others
@@ -203,8 +234,14 @@ export function groupModelsByProvider(
     providerDisplayOrder.indexOf(providerStats.providerKey),
   );
 
-  const allVisibleModels = flatMap(sortedProviders, (providerStats) => providerStats.visibleModels);
-  const totalModels = sumBy(sortedProviders, (providerStats) => providerStats.models.length);
+  const allVisibleModels = flatMap(
+    sortedProviders,
+    (providerStats) => providerStats.visibleModels,
+  );
+  const totalModels = sumBy(
+    sortedProviders,
+    (providerStats) => providerStats.models.length,
+  );
   const overallPercentage = toRoundedAverage(allVisibleModels);
   const healthStatus = resolveAccountHealthStatus(overallPercentage);
 

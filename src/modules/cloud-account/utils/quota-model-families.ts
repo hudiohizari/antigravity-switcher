@@ -1,4 +1,5 @@
 import type { CloudQuotaModelInfo } from "@/modules/cloud-account/types";
+import { parseClaudeModel } from "@/modules/cloud-account/utils/model-display";
 
 const FAMILY_DISPLAY_NAMES: Record<string, string> = {
   "gemini-3.1-pro": "Gemini 3.1 Pro",
@@ -7,11 +8,18 @@ const FAMILY_DISPLAY_NAMES: Record<string, string> = {
   "gemini-flash-lite": "Gemini Flash Lite",
   "gemini-pro-image": "Gemini Pro Image",
   "gemini-flash-image": "Gemini Flash Image",
-  "claude-sonnet-4-6": "Claude Sonnet 4.6",
-  "claude-opus-4-6": "Claude Opus 4.6",
-  "claude-opus-4-5": "Claude Opus 4.5",
   "gpt-oss-120b": "GPT OSS 120B",
 };
+
+export function getQuotaModelFamilyDisplayName(
+  familyId: string,
+): string | undefined {
+  const parsed = parseClaudeModel(familyId);
+  if (parsed) {
+    return `Claude ${parsed.major}.${parsed.minor} ${parsed.variant}`;
+  }
+  return FAMILY_DISPLAY_NAMES[familyId];
+}
 
 function normalizeModelId(modelId: string): string {
   return modelId
@@ -109,7 +117,7 @@ export function aggregateQuotaModelFamilies(
   for (const [modelId, info] of Object.entries(models)) {
     const normalizedModelId = normalizeModelId(modelId);
     const familyId = getQuotaModelFamilyId(normalizedModelId);
-    const displayName = FAMILY_DISPLAY_NAMES[familyId];
+    const displayName = getQuotaModelFamilyDisplayName(familyId);
     const current = aggregated[familyId];
 
     if (!current) {

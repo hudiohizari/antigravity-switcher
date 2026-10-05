@@ -12,10 +12,10 @@ import type {
   ConcurrentChatSummary,
 } from "../ipc/router";
 
-function resolveConcurrentModelName(maxTokens: number): string {
+export function resolveConcurrentModelName(maxTokens: number): string {
   if (maxTokens >= 2_000_000) return "Gemini 3.1 Pro";
   if (maxTokens >= 256_000) return "Gemini 3.8 Flash";
-  if (maxTokens >= 200_000) return "Claude Sonnet";
+  if (maxTokens >= 160_000) return "Claude Sonnet";
   return "Antigravity Model";
 }
 

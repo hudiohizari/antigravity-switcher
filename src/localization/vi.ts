@@ -977,6 +977,8 @@ const vi = {
       gemini3Ready: "Sẵn sàng cho Gemini 3",
       groupGoogleGemini: "Google Gemini",
       groupAnthropicClaude: "Anthropic Claude",
+      groupGpt: "GPT",
+      groupOtherModels: "Các mô hình khác",
       proxy: "Proxy",
       proxyPlaceholder: "ví dụ: http://127.0.0.1:7890",
       proxySaved: "Đã lưu proxy",

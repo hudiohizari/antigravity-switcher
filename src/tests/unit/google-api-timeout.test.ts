@@ -920,4 +920,72 @@ describe("GoogleAPIService fetchQuota fallback policy", () => {
       "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     );
   });
+
+  it("ingests models with models/ prefix and third-party models with quotaInfo", async () => {
+    const fetchMock = vi.fn().mockImplementation(async (url: string) => {
+      if (url.includes("loadCodeAssist")) {
+        return {
+          ok: false,
+          status: 404,
+          text: vi.fn().mockResolvedValue("NOT_FOUND"),
+        };
+      }
+      if (url.includes("fetchAvailableModels")) {
+        return {
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({
+            models: {
+              "models/gpt-oss-120b": {
+                quotaInfo: {
+                  remainingFraction: 0.85,
+                  resetTime: "2026-05-05T00:00:00Z",
+                },
+                displayName: "GPT OSS 120B",
+              },
+              "models/gemini-2.5-flash": {
+                quotaInfo: {
+                  remainingFraction: 0.5,
+                  resetTime: "2026-05-05T00:00:00Z",
+                },
+              },
+              "deepseek-chat": {
+                quotaInfo: {
+                  remainingFraction: 0.9,
+                  resetTime: "2026-05-05T00:00:00Z",
+                },
+                displayName: "DeepSeek Chat",
+              },
+              "non-quota-model": {
+                displayName: "No Quota Model",
+              },
+            },
+          }),
+        };
+      }
+      return {
+        ok: false,
+        status: 400,
+        text: vi.fn().mockResolvedValue("INVALID_ARGUMENT"),
+      };
+    });
+
+    mockAxiosRequests(fetchMock);
+
+    const { ConfigManager } = await import("@/modules/config/ipc/manager");
+    vi.spyOn(ConfigManager, "loadConfig").mockReturnValue({
+      proxy: { upstream_proxy: { enabled: false } },
+    } as any);
+
+    const { GoogleAPIService } =
+      await import("@/modules/cloud-account/services/GoogleAPIService");
+
+    const result = await GoogleAPIService.fetchQuota("access-token");
+    expect(result.models["models/gpt-oss-120b"]).toBeDefined();
+    expect(result.models["models/gpt-oss-120b"].percentage).toBe(85);
+    expect(result.models["models/gemini-2.5-flash"]).toBeDefined();
+    expect(result.models["deepseek-chat"]).toBeDefined();
+    expect(result.models["deepseek-chat"].percentage).toBe(90);
+    expect(result.models["non-quota-model"]).toBeUndefined();
+  });
 });

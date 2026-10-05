@@ -22,7 +22,10 @@ import { ActiveTelemetryCard } from "@/modules/context-telemetry/components/orga
 import { ModelSwitchMatrix } from "@/modules/context-telemetry/components/organisms/ModelSwitchMatrix";
 import { ContextDashboardSkeleton } from "@/modules/context-telemetry/components/templates/ContextDashboardSkeleton";
 import { ContextDashboardTemplate } from "@/modules/context-telemetry/components/templates/ContextDashboardTemplate";
-import { ContextDashboard } from "@/modules/context-telemetry/components/ContextDashboard";
+import {
+  ContextDashboard,
+  resolveConcurrentModelName,
+} from "@/modules/context-telemetry/components/ContextDashboard";
 import * as contextHook from "@/modules/context-telemetry/hooks/useActiveContextTelemetry";
 import type {
   ActiveChatTelemetrySnapshot,
@@ -1095,6 +1098,13 @@ describe("Context Telemetry Atomic Frontend Components", () => {
       expect(screen.getByText("Gemini 3.1 Pro")).toBeInTheDocument();
       expect(screen.getByText("Claude Sonnet")).toBeInTheDocument();
       expect(screen.getByText("Antigravity Model")).toBeInTheDocument();
+    });
+
+    it("resolveConcurrentModelName accurately resolves 160k Claude models", () => {
+      expect(resolveConcurrentModelName(2000000)).toBe("Gemini 3.1 Pro");
+      expect(resolveConcurrentModelName(256000)).toBe("Gemini 3.8 Flash");
+      expect(resolveConcurrentModelName(160000)).toBe("Claude Sonnet");
+      expect(resolveConcurrentModelName(128000)).toBe("Antigravity Model");
     });
 
     it("ModelSwitchCard renders estimated asterisk when isAuthoritative=false", () => {

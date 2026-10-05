@@ -1,10 +1,11 @@
-import React from 'react';
+import React from "react";
 
-import { useTranslation } from 'react-i18next';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from "react-i18next";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
-import type { ProviderStats } from '@/modules/cloud-account/utils/provider-grouping';
-import { clampQuotaPercentage } from '@/modules/cloud-account/utils/quota-display';
+import type { ProviderStats } from "@/modules/cloud-account/utils/provider-grouping";
+import { clampQuotaPercentage } from "@/modules/cloud-account/utils/quota-display";
+import { formatModelDisplayName } from "@/modules/cloud-account/utils/model-display";
 
 interface ProviderGroupProps {
   stats: ProviderStats;
@@ -59,7 +60,9 @@ export const ProviderGroup: React.FC<ProviderGroupProps> = ({
         <span className="font-medium">{providerInfo.name}</span>
 
         <span className="text-muted-foreground text-xs">
-          {t('settings.providerGroupings.models', { count: visibleModels.length })}
+          {t("settings.providerGroupings.models", {
+            count: visibleModels.length,
+          })}
         </span>
 
         {/* Spacer */}
@@ -83,11 +86,18 @@ export const ProviderGroup: React.FC<ProviderGroupProps> = ({
             </span>
             {Number.isFinite(avgPercentage) && avgPercentage > 0 && (
               <span className="text-muted-foreground text-[10px]">
-                {t('settings.providerGroupings.avgLabel')}
+                {t("settings.providerGroupings.avgLabel")}
               </span>
             )}
           </div>
-          <div className="bg-muted h-1.5 w-16 overflow-hidden rounded-full">
+          <div
+            role="progressbar"
+            aria-valuenow={clampQuotaPercentage(avgPercentage)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label={`${providerInfo.name} average quota remaining`}
+            className="bg-muted h-1.5 w-16 overflow-hidden rounded-full"
+          >
             <div
               className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(avgPercentage)}`}
               style={{ width: `${clampQuotaPercentage(avgPercentage)}%` }}
@@ -99,42 +109,64 @@ export const ProviderGroup: React.FC<ProviderGroupProps> = ({
       {/* Individual model rows (shown when expanded) */}
       {!isCollapsed && (
         <div className="border-border/40 border-t">
-          {visibleModels.map((model, index) => (
-            <div
-              key={model.id}
-              className={`hover:bg-muted/60 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-3 py-2 pl-9 text-sm transition-colors ${
-                index < visibleModels.length - 1 ? 'border-border/20 border-b' : ''
-              }`}
-            >
-              <span className="text-muted-foreground min-w-0 truncate" title={model.id}>
-                {model.id.replace('models/', '')}
-              </span>
-              <div className="flex flex-col items-end gap-1">
+          {visibleModels.map((model, index) => {
+            const modelDisplayName = formatModelDisplayName(
+              model.id,
+              model.displayName,
+            );
+            return (
+              <div
+                key={model.id}
+                className={`hover:bg-muted/60 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 px-3 py-2 pl-9 text-sm transition-colors ${
+                  index < visibleModels.length - 1
+                    ? "border-border/20 border-b"
+                    : ""
+                }`}
+              >
                 <span
-                  className="text-muted-foreground text-[10px] leading-none"
-                  title={formatResetTimeTitle(model.resetTime)}
+                  className="text-muted-foreground min-w-0 truncate"
+                  title={modelDisplayName}
                 >
-                  {formatResetTimeLabel(model.resetTime)}
+                  {modelDisplayName}
                 </span>
-                <div className="flex items-baseline gap-1.5">
+                <div className="flex flex-col items-end gap-1">
                   <span
-                    className={`font-mono leading-none font-bold ${getQuotaTextColorClass(model.percentage)}`}
+                    className="text-muted-foreground text-[10px] leading-none"
+                    title={formatResetTimeTitle(model.resetTime)}
                   >
-                    {formatQuotaLabel(model.percentage)}
+                    {formatResetTimeLabel(model.resetTime)}
                   </span>
-                  {model.percentage > 0 && (
-                    <span className="text-muted-foreground text-[10px]">{leftLabel}</span>
-                  )}
-                </div>
-                <div className="bg-muted h-1.5 w-24 overflow-hidden rounded-full">
+                  <div className="flex items-baseline gap-1.5">
+                    <span
+                      className={`font-mono leading-none font-bold ${getQuotaTextColorClass(model.percentage)}`}
+                    >
+                      {formatQuotaLabel(model.percentage)}
+                    </span>
+                    {model.percentage > 0 && (
+                      <span className="text-muted-foreground text-[10px]">
+                        {leftLabel}
+                      </span>
+                    )}
+                  </div>
                   <div
-                    className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(model.percentage)}`}
-                    style={{ width: `${clampQuotaPercentage(model.percentage)}%` }}
-                  />
+                    role="progressbar"
+                    aria-valuenow={clampQuotaPercentage(model.percentage)}
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-label={`${modelDisplayName} quota remaining`}
+                    className="bg-muted h-1.5 w-24 overflow-hidden rounded-full"
+                  >
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${getQuotaBarColorClass(model.percentage)}`}
+                      style={{
+                        width: `${clampQuotaPercentage(model.percentage)}%`,
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

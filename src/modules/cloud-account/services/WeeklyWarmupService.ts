@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CloudAccountSettingsStore } from '@/modules/cloud-account/persistence/cloud-account-settings-store';
 import type { CloudAccount } from '@/modules/cloud-account/types';
 import { selectWeeklyQuotaItems } from '@/modules/cloud-account/utils/quota-groups';
+import { isClaudeModel } from '@/modules/cloud-account/utils/model-display';
 import { logger } from '@/shared/logging/logger';
 import { GoogleAPIService } from './GoogleAPIService';
 import { CloudAccountRepo } from '../persistence/cloudHandler';
@@ -65,6 +66,28 @@ function defaultHistory(): WeeklyWarmupHistory {
   return { version: HISTORY_VERSION, entries: {} };
 }
 
+export function resolveWarmupModel(account: CloudAccount, group: WeeklyWarmupGroup): string {
+  if (group === 'gemini') {
+    return 'gemini-3-flash';
+  }
+
+  const models = account.quota?.models;
+  if (models && Object.keys(models).length > 0) {
+    const claudeKeys = Object.keys(models).filter((k) => isClaudeModel(k));
+    if (claudeKeys.length > 0) {
+      // Prioritize non-thinking base models to preserve thinking token budget
+      const nonThinking = claudeKeys.filter((k) => !k.toLowerCase().includes('thinking'));
+      if (nonThinking.length > 0) {
+        return nonThinking[0];
+      }
+      return claudeKeys[0];
+    }
+  }
+
+  // Safe fallback if no Claude models in account quota
+  return 'claude-sonnet-4-6';
+}
+
 export function selectWeeklyWarmupCandidates(
   accounts: CloudAccount[],
   config: WeeklyWarmupConfig,
@@ -115,7 +138,7 @@ export function selectWeeklyWarmupCandidates(
           bucketId: item.bucket.bucket_id,
           group,
           historyKey,
-          model: group === 'claude' ? 'claude-sonnet-4-6' : 'gemini-3-flash',
+          model: resolveWarmupModel(account, group),
           resetTimestamp,
         },
       ];

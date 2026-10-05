@@ -590,7 +590,11 @@ function resolveSubscriptionTier(
 }
 
 function isTrackedModel(modelName: string): boolean {
-  return /^(gemini|claude|gpt|image|imagen)/i.test(modelName);
+  if (!modelName || typeof modelName !== "string") {
+    return false;
+  }
+  const cleaned = modelName.replace(/^models\//i, "").trim();
+  return cleaned.length > 0;
 }
 
 function toModelQuotaInfo(
