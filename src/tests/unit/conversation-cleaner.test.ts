@@ -174,6 +174,10 @@ describe("Conversation Cleaner Service", () => {
         return path.join(tempDir, ".gemini", sub, "conversations");
       },
     );
+
+    const fakeBackupsDir = path.join(tempDir, "backups");
+    fs.mkdirSync(fakeBackupsDir, { recursive: true });
+    vi.spyOn(pathsModule, "getBackupsDir").mockReturnValue(fakeBackupsDir);
   });
 
   afterEach(() => {

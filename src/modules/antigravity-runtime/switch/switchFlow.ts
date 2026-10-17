@@ -24,6 +24,7 @@ import {
 import { withTimingTrace } from "@/shared/observability/timingTrace";
 import { ConfigManager } from "@/modules/config/ipc/manager";
 import { checkpointStateDatabases } from "@/modules/chat-resume/walCheckpoint";
+import { createPreSwitchBackup } from "@/modules/antigravity-runtime/backup/chatBackup";
 import { captureAndBufferActiveTurn } from "@/modules/chat-resume/activeTurnDetector";
 import { chatResumeDispatcher } from "@/modules/chat-resume/ChatResumeDispatcher";
 import type {
@@ -47,6 +48,7 @@ export interface SwitchFlowOptions {
     target: AntigravityAppTarget,
   ) => Promise<ActiveTurnSnapshot | null>;
   walCheckpoint?: (target: AntigravityAppTarget) => Promise<unknown>;
+  preSwitchBackup?: (target: AntigravityAppTarget) => Promise<unknown>;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -233,6 +235,21 @@ export async function executeSwitchFlow(
               logger.warn(
                 "Pre-kill WAL checkpoint encountered an error, proceeding with switch",
                 walErr,
+              );
+            }
+
+            try {
+              await trace.phase("preSwitchBackupMs", async () => {
+                if (options.preSwitchBackup) {
+                  await options.preSwitchBackup(appTarget || "app");
+                } else {
+                  await createPreSwitchBackup(appTarget || "app");
+                }
+              });
+            } catch (backupErr) {
+              logger.warn(
+                "Pre-switch auto-backup encountered an error, proceeding with switch",
+                backupErr,
               );
             }
 
