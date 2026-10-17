@@ -1,7 +1,7 @@
 {
   "name": "antigravity-switcher",
   "productName": "Antigravity Switcher",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Antigravity Switcher - Power-User Account Switcher, Quota Failover, and Continuity Suite for Google Antigravity",
   "homepage": "https://antigravity-switcher.hizari.my.id/",
   "main": ".vite/build/main.js",
@@ -30,6 +30,8 @@
     "auto-resume",
     "context-telemetry",
     "broken-chat-cleaner",
+    "chat-backup",
+    "chat-recovery",
     "tray-switcher",
     "remote",
     "tunnel",

@@ -38,9 +38,9 @@ Preserves in-flight prompts and continuous generations across account switches a
 - **Strict Model Fidelity**: Never silently downgrades your requested model. If quota is exhausted on the fallback account, safely preserves the prompt in a draft buffer.
 - **Zero Prompt Loss**: Eliminates manual prompt copy-pasting during mid-cascade account rotations.
 
-### 4. Context Window Telemetry & Compaction Monitoring
+### 4. Chat Hub: Context Window Telemetry & Compaction Monitoring
 
-Inspect real-time token utilization, context window headroom, and compaction risk across active and concurrent cascade sessions.
+Inspect real-time token utilization, context window headroom, and compaction risk across active and concurrent cascade sessions within the unified Chat Hub.
 
 ![Chat Context Telemetry & Compaction Monitoring](images/context-preview.png)
 
@@ -49,17 +49,18 @@ Inspect real-time token utilization, context window headroom, and compaction ris
 - **Subagent Telemetry**: Real-time token breakdown and cost attribution for spawned subagents.
 - **Compaction Alerting**: Visual risk badges (Normal, High Pressure, Critical Risk) warn before automated context eviction degrades agent reasoning.
 
-### 5. Project-Grouped Broken Chat Cleaner & Pruner
+### 5. Chat Hub: Health, Auto-Backup & Recovery Cockpit
 
-Scans and prunes orphaned conversation summaries whose trajectory database files were evicted by Google Antigravity FIFO session limits (approx. 500 conversations), resolving persistent "Conversation unavailable" errors.
+Comprehensive session integrity auditing, automated multi-tier backups, and instant disaster recovery across Antigravity App, Antigravity IDE, and Antigravity CLI.
 
-![Broken Chat Cleaner](images/cleaner-preview.png)
+![Chat Health, Auto-Backup & Recovery Cockpit](images/chat-health-preview.png)
 
-- **Multi-Target Pruning**: Independent inspection and pruning across Antigravity App, Antigravity IDE, and Antigravity CLI.
-- **Project-Grouped Accordions**: Automatically groups orphaned conversation records by workspace folder with PII-masked paths.
-- **Adaptive Disclosure**: Clean overview with auto-expansion for small workloads and collapsed trees for heavy multi-project setups.
-- **Transactional Atomic Purge**: Atomic SQLite record deletion paired with immediate protobuf mirror cache invalidation (`agyhub_summaries_proto.pb`).
-- **Concurrency Resilience**: Built-in defense against `SQLITE_BUSY` database lock collisions with automatic retries.
+- **Multi-Target Health Telemetry**: Live inventory of registered, intact, and broken chat sessions with live target selection (App, IDE, CLI) and storage footprint metrics.
+- **Automated Tiered Snapshots**: Non-blocking SQLite auto-backups triggered before account switches and cleaner operations, with intelligent 0-chat suppression and FIFO retention.
+- **Granular 1-Click Restore**: Restore individual missing conversations directly back into active workspace stores, or perform instant full-snapshot rollbacks.
+- **Schema-Drift Protection**: Dynamic SQLite column inspection and fallback synthesis ensure seamless restorations across disparate Antigravity schema revisions, paired with immediate protobuf mirror cache invalidation (`agyhub_summaries_proto.pb`).
+- **Project-Grouped Orphan Pruner**: Scans and safely purges broken session references evicted by Antigravity FIFO session limits, eliminating "Conversation unavailable" crashes while preserving restorable backups.
+- **Storage Protection**: Configurable 1.0 GB soft storage warning threshold with one-click manual backup pruning.
 
 ### 6. Mobile Remote Relay & Web UI Mirror
 
@@ -90,14 +91,15 @@ Resident in your macOS Menu Bar and Windows System Tray for instant account rota
 
 Antigravity Switcher is designed to solve the most pressing Google Antigravity pain points:
 
-| Pain Point / Need       | Target Developer Queries                                                                                                                  | Solution Feature                                     |
-| :---------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------- |
-| **Account Switching**   | `antigravity account switcher`, `antigravity switch accounts`, `antigravity multi account`, `switch google account antigravity`           | Multi-Target Account Switching & Quota Orchestration |
-| **Quota & Rate Limits** | `antigravity quota limit`, `antigravity quota failover`, `antigravity 429 rate limit`, `gemini quota switcher`                            | Automated Quota Failover & Limit Tracking            |
-| **Session Continuity**  | `antigravity auto resume chat`, `antigravity recover prompt after switch`, `preserve in-flight prompts antigravity`                       | Active Chat Auto-Resume Engine                       |
-| **Token Telemetry**     | `antigravity context window monitor`, `antigravity token telemetry`, `antigravity compaction risk`, `gemini flash context usage`          | Context Window Telemetry & Compaction Monitoring     |
-| **Database Cleaning**   | `antigravity conversation unavailable`, `antigravity clean broken chats`, `antigravity sqlite orphan purge`, `prune broken conversations` | Project-Grouped Broken Chat Cleaner                  |
-| **Remote Supervision**  | `antigravity mobile remote`, `antigravity phone web mirror`, `antigravity cloudflare tunnel`                                              | Mobile Remote Relay & Web UI Mirror                  |
+| Pain Point / Need          | Target Developer Queries                                                                                                                  | Solution Feature                            |
+| :------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------ |
+| **Account Switching**      | `antigravity account switcher`, `antigravity switch accounts`, `antigravity multi account`, `switch google account antigravity`           | Multi-Target Account Switching & Quota      |
+| **Quota & Rate Limits**    | `antigravity quota limit`, `antigravity quota failover`, `antigravity 429 rate limit`, `gemini quota switcher`                            | Automated Quota Failover & Limit Tracking   |
+| **Session Continuity**     | `antigravity auto resume chat`, `antigravity recover prompt after switch`, `preserve in-flight prompts antigravity`                       | Active Chat Auto-Resume Engine              |
+| **Token Telemetry**        | `antigravity context window monitor`, `antigravity token telemetry`, `antigravity compaction risk`, `gemini flash context usage`          | Context Window Telemetry & Compaction       |
+| **Database Cleaning**      | `antigravity conversation unavailable`, `antigravity clean broken chats`, `antigravity sqlite orphan purge`, `prune broken conversations` | Project-Grouped Broken Chat Cleaner         |
+| **Chat Backup & Recovery** | `antigravity backup chat`, `antigravity restore chat`, `recover lost antigravity conversations`, `antigravity chat health`                | Chat Health, Auto-Backup & Recovery Cockpit |
+| **Remote Supervision**     | `antigravity mobile remote`, `antigravity phone web mirror`, `antigravity cloudflare tunnel`                                              | Mobile Remote Relay & Web UI Mirror         |
 
 ---
 
