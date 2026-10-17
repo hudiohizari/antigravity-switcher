@@ -4,6 +4,8 @@
  * components can safely consume types and presentation constants.
  */
 
+import type { BackupSnapshot, BackupStats } from "../backup/chatBackup";
+
 /**
  * Represents an individual broken conversation missing its trajectory database.
  */
@@ -11,6 +13,8 @@ export interface BrokenChatItem {
   conversationId: string;
   title: string;
   updatedAt?: number;
+  hasBackup?: boolean;
+  matchingSnapshotId?: string;
 }
 
 /**
@@ -46,6 +50,16 @@ export interface CleanInvalidChatsResult {
   totalChecked: number;
   prunedCount: number;
   errors: string[];
+}
+
+/**
+ * Unified chat health report combining live index diagnostics and backup snapshot states.
+ */
+export interface ChatHealthReport {
+  target: string;
+  cleanerStats: InvalidChatsStats;
+  backupStats: BackupStats;
+  snapshots: BackupSnapshot[];
 }
 
 /**

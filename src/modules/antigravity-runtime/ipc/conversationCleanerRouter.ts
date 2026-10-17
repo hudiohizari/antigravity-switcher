@@ -25,6 +25,8 @@ export const BrokenChatItemSchema = z.object({
   conversationId: z.string(),
   title: z.string(),
   updatedAt: z.number().optional(),
+  hasBackup: z.boolean().optional(),
+  matchingSnapshotId: z.string().optional(),
 }) satisfies z.ZodType<BrokenChatItem>;
 
 export const BrokenProjectGroupSchema = z.object({
