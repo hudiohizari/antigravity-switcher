@@ -38,7 +38,6 @@ import { WeeklyWarmupSettings } from "@/modules/cloud-account/components/WeeklyW
 import { useEffect, useState } from "react";
 import { openLogDirectory } from "@/modules/antigravity-runtime/actions/system";
 import { AntigravityClientCacheSettings } from "@/modules/antigravity-runtime/components/AntigravityClientCacheSettings";
-import { AntigravityConversationCleanerSettings } from "@/modules/antigravity-runtime/components/AntigravityConversationCleanerSettings";
 import { RuntimeTargetSettings } from "@/modules/antigravity-runtime/components/RuntimeTargetSettings";
 
 export function SettingsPage() {
@@ -364,7 +363,6 @@ export function SettingsPage() {
           )}
 
           <AntigravityClientCacheSettings />
-          <AntigravityConversationCleanerSettings />
 
           <Card>
             <CardHeader>

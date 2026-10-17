@@ -131,7 +131,19 @@ const id = {
     accounts: "Akun",
     relay: "Remote Relay",
     context: "Konteks Chat",
+    chat: "Percakapan",
     settings: "Pengaturan",
+  },
+  chat: {
+    tabs: {
+      context: "Konteks Percakapan",
+      manager: "Manajer Percakapan",
+      contextDesc:
+        "Tekanan token percakapan waktu nyata dan batas kapasitas model",
+      managerDesc:
+        "Diagnostik integritas sesi, pemangkasan referensi rusak, dan cadangan",
+      ariaTabList: "Pengalih tampilan percakapan",
+    },
   },
   remote: {
     title: "Koneksi Jarak Jauh & Tethering Seluler",
@@ -457,6 +469,85 @@ const id = {
       showChats: "Tampilkan percakapan",
       hideChats: "Sembunyikan percakapan",
       toggleProjectAria: "Beralih tampilan daftar percakapan untuk {{project}}",
+    },
+    chatBackup: {
+      title: "Cadangan Percakapan",
+      description:
+        "Lindungi riwayat percakapan saat beralih dan pembersihan dengan pemulihan instan.",
+      loading: "Memuat snapshot cadangan...",
+      emptyTitle: "Belum ada cadangan",
+      emptyDescription:
+        "Cadangan dibuat otomatis sebelum pengalihan akun dan proses pembersihan.",
+      storageWarning:
+        "Penyimpanan cadangan mencapai {{size}} (melebihi batas 1.0 GB). Pangkas snapshot lama untuk menghemat ruang.",
+      pruneOld: "Pangkas Cadangan Lama",
+      pruning: "Memangkas...",
+      pruneSuccess: "Berhasil memangkas {{count}} snapshot lama.",
+      restoreSnapshot: "Pulihkan Snapshot",
+      restoreChat: "Pulihkan Percakapan",
+      restoring: "Memulihkan...",
+      confirmFullTitle: "Pulihkan Seluruh Snapshot?",
+      confirmFullDesc:
+        "Mengganti percakapan saat ini dengan snapshot ini. Mulai ulang Antigravity setelah pemulihan untuk memuat riwayat.",
+      confirmSingleTitle: "Pulihkan Percakapan Ini?",
+      confirmSingleDesc:
+        "Memulihkan percakapan ini ke daftar Anda tanpa mengubah percakapan lainnya.",
+      restoreSuccess:
+        "Snapshot berhasil dipulihkan. Mulai ulang Antigravity untuk memperbarui.",
+      restoreSingleSuccess:
+        "Percakapan berhasil dipulihkan. Mulai ulang Antigravity untuk memperbarui.",
+      errorTitle: "Penyimpanan cadangan sedang sibuk",
+      errorDescription:
+        "Basis data percakapan sedang digunakan oleh proses lain. Harap tunggu beberapa saat lalu coba lagi.",
+      retry: "Coba Lagi",
+      cancel: "Batal",
+    },
+    chatHealth: {
+      title: "Kesehatan & Pemulihan Percakapan",
+      description:
+        "Audit integritas sesi, pangkas referensi percakapan rusak, dan pulihkan cadangan obrolan sebelumnya.",
+      statusHealthy: "Semua sehat",
+      statusBroken: "{{count}} sesi rusak",
+      statusBackups: "{{count}} cadangan ({{size}})",
+      filterShowAll: "Tampilkan semua percakapan tercadangkan",
+      filterStaleOnly: "Hanya menampilkan percakapan usang atau hilang",
+      pruneAllBroken: "Pangkas Semua yang Rusak",
+      restoreSnapshot: "Pulihkan Seluruh Snapshot",
+      restoreChat: "Pulihkan Percakapan",
+      pruneChat: "Pangkas",
+      confirmPruneAllTitle: "Pangkas Semua Percakapan Rusak?",
+      confirmPruneAllDesc:
+        "Menghapus permanen catatan percakapan rusak yang file riwayatnya telah terhapus.",
+      confirmRestoreTitle: "Pulihkan Seluruh Snapshot?",
+      confirmRestoreDesc:
+        "Mengganti percakapan saat ini dengan snapshot ini. Mulai ulang Antigravity setelah pemulihan untuk memuat riwayat.",
+      confirmRestoreChatTitle: "Pulihkan Percakapan Ini?",
+      confirmRestoreChatDesc:
+        "Memulihkan percakapan ini ke daftar Anda tanpa mengubah percakapan lainnya.",
+      loading: "Memeriksa kesehatan sesi...",
+      emptyTitle: "Tidak ada masalah terdeteksi",
+      emptyDesc:
+        "Semua percakapan sehat dan tidak ada cadangan tertunda untuk dipulihkan.",
+      errorTitle: "Basis data sedang sibuk",
+      errorDesc:
+        "Basis data percakapan sedang digunakan oleh proses lain. Harap tunggu beberapa saat lalu coba lagi.",
+      retry: "Coba Pindai Lagi",
+      storageWarning:
+        "Penyimpanan cadangan mencapai {{size}} (melebihi batas 1.0 GB). Pangkas snapshot lama untuk menghemat ruang.",
+      pruneBackups: "Pangkas Cadangan Lama",
+      restoreSuccess:
+        "Percakapan berhasil dipulihkan. Mulai ulang Antigravity untuk memperbarui.",
+      pruneSuccess: "Berhasil memangkas {{count}} sesi rusak.",
+      showMoreSnapshots: "Tampilkan {{count}} snapshot lebih lama",
+      showOlderSnapshots: "Tampilkan {{count}} snapshot lebih lama",
+      showFewerSnapshots: "Sembunyikan snapshot tambahan",
+      allBackupsSyncedTitle: "Semua Cadangan Tersinkronisasi",
+      allSyncedTitle: "Semua Cadangan Tersinkronisasi",
+      allBackupsSyncedDesc:
+        "Semua sesi yang dicadangkan saat ini ada di Antigravity.",
+      allSyncedDesc: "Semua sesi yang dicadangkan saat ini ada di Antigravity.",
+      inspectFullHistory: "Periksa Riwayat Lengkap",
+      cancel: "Batal",
     },
     version: "Versi",
     platform: "Platform",

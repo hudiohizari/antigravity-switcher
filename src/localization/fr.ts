@@ -136,7 +136,18 @@ const fr = {
     accounts: "Comptes",
     relay: "Relais à distance",
     context: "Contexte de chat",
+    chat: "Chat",
     settings: "Parametres",
+  },
+  chat: {
+    tabs: {
+      context: "Contexte de chat",
+      manager: "Gestionnaire de chat",
+      contextDesc: "Pression des jetons en temps réel et plafonds du modèle",
+      managerDesc:
+        "Diagnostic d'intégrité des sessions, purge des références corrompues et sauvegardes",
+      ariaTabList: "Sélecteur de vue de chat",
+    },
   },
   remote: {
     title: "Contrôle à distance & Partage mobile",
@@ -470,6 +481,87 @@ const fr = {
       showChats: "Afficher les conversations",
       hideChats: "Masquer les conversations",
       toggleProjectAria: "Basculer la liste des conversations pour {{project}}",
+    },
+    chatBackup: {
+      title: "Sauvegardes de conversation",
+      description:
+        "Protégez l'historique lors des basculements et nettoyages avec restauration instantanée.",
+      loading: "Chargement des instantanés...",
+      emptyTitle: "Aucune sauvegarde disponible",
+      emptyDescription:
+        "Les sauvegardes sont créées automatiquement avant chaque basculement ou nettoyage.",
+      storageWarning:
+        "Le stockage atteint {{size}} (limite de 1.0 Go dépassée). Purgez les anciens instantanés pour libérer de l'espace.",
+      pruneOld: "Purger les sauvegardes",
+      pruning: "Purge en cours...",
+      pruneSuccess: "{{count}} anciens instantanés purgés.",
+      restoreSnapshot: "Restaurer l'instantané",
+      restoreChat: "Restaurer la conversation",
+      restoring: "Restauration en cours...",
+      confirmFullTitle: "Restaurer tout l'instantané ?",
+      confirmFullDesc:
+        "Remplace les conversations actuelles par cet instantané. Redémarrez Antigravity pour recharger la liste.",
+      confirmSingleTitle: "Restaurer cette conversation ?",
+      confirmSingleDesc:
+        "Restaure cette conversation dans votre liste sans modifier les autres échanges.",
+      restoreSuccess:
+        "Instantané restauré avec succès. Redémarrez Antigravity pour actualiser.",
+      restoreSingleSuccess:
+        "Conversation restaurée avec succès. Redémarrez Antigravity pour actualiser.",
+      errorTitle: "Stockage des sauvegardes temporairement occupé",
+      errorDescription:
+        "La base de données est utilisée par un autre processus. Veuillez patienter et réessayer.",
+      retry: "Réessayer",
+      cancel: "Annuler",
+    },
+    chatHealth: {
+      title: "Santé et récupération des conversations",
+      description:
+        "Vérifiez l'intégrité des sessions, purgez les références corrompues et restaurez les sauvegardes.",
+      statusHealthy: "Tout est sain",
+      statusBroken: "{{count}} sessions corrompues",
+      statusBackups: "{{count}} sauvegardes ({{size}})",
+      filterShowAll: "Afficher toutes les conversations sauvegardées",
+      filterStaleOnly:
+        "Affichage des conversations obsolètes ou manquantes uniquement",
+      pruneAllBroken: "Purger les éléments corrompus",
+      restoreSnapshot: "Restaurer l'instantané complet",
+      restoreChat: "Restaurer la conversation",
+      pruneChat: "Purger",
+      confirmPruneAllTitle: "Purger toutes les conversations corrompues ?",
+      confirmPruneAllDesc:
+        "Supprime définitivement les enregistrements corrompus sans fichiers d'historique.",
+      confirmRestoreTitle: "Restaurer tout l'instantané ?",
+      confirmRestoreDesc:
+        "Remplace les conversations actuelles par cet instantané. Redémarrez Antigravity pour recharger la liste.",
+      confirmRestoreChatTitle: "Restaurer cette conversation ?",
+      confirmRestoreChatDesc:
+        "Restaure cette conversation dans votre liste sans modifier les autres échanges.",
+      loading: "Analyse de l'état des sessions...",
+      emptyTitle: "Aucun problème détecté",
+      emptyDesc:
+        "Toutes les conversations sont saines et aucune sauvegarde n'est en attente.",
+      errorTitle: "Base de données temporairement occupée",
+      errorDesc:
+        "La base de données est utilisée par un autre processus. Veuillez patienter et réessayer.",
+      retry: "Réessayer l'analyse",
+      storageWarning:
+        "Le stockage atteint {{size}} (limite de 1.0 Go dépassée). Purgez les anciens instantanés pour libérer de l'espace.",
+      pruneBackups: "Purger les sauvegardes",
+      restoreSuccess:
+        "Conversation restaurée avec succès. Redémarrez Antigravity pour actualiser.",
+      pruneSuccess: "{{count}} sessions corrompues purgées avec succès.",
+      showMoreSnapshots: "Afficher {{count}} instantanés plus anciens",
+      showOlderSnapshots: "Afficher {{count}} instantanés plus anciens",
+      showFewerSnapshots: "Afficher moins d'instantanés",
+      allBackupsSyncedTitle: "Toutes les sauvegardes sont synchronisées",
+      allSyncedTitle: "Toutes les sauvegardes sont synchronisées",
+      allBackupsSyncedDesc:
+        "Toutes les sessions sauvegardées existent actuellement dans Antigravity.",
+      allSyncedDesc:
+        "Toutes les sessions sauvegardées existent actuellement dans Antigravity.",
+      inspectFullHistory: "Inspecter l'historique complet",
+      cancel: "Annuler",
     },
     version: "Version",
     platform: "Plateforme",

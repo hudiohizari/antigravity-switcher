@@ -127,7 +127,18 @@ const tr = {
     accounts: "Hesaplar",
     relay: "Uzaktan Relay",
     context: "Sohbet Bağlamı",
+    chat: "Sohbet",
     settings: "Ayarlar",
+  },
+  chat: {
+    tabs: {
+      context: "Sohbet Bağlamı",
+      manager: "Sohbet Yöneticisi",
+      contextDesc: "Gerçek zamanlı sohbet belirteç baskısı ve model tavanları",
+      managerDesc:
+        "Oturum bütünlüğü teşhisi, bozuk referans temizliği ve yedekler",
+      ariaTabList: "Sohbet görünümü değiştirici",
+    },
   },
   remote: {
     title: "Uzaktan Kontrol ve Mobil İnternet Paylaşımı",
@@ -452,6 +463,86 @@ const tr = {
       showChats: "Sohbetleri göster",
       hideChats: "Sohbetleri gizle",
       toggleProjectAria: "{{project}} için sohbet listesini göster veya gizle",
+    },
+    chatBackup: {
+      title: "Sohbet Yedekleri",
+      description:
+        "Anında geri yükleme ile geçişler ve temizlik sırasında sohbet geçmişini koruyun.",
+      loading: "Yedek anlık görüntüleri yükleniyor...",
+      emptyTitle: "Kullanılabilir yedek yok",
+      emptyDescription:
+        "Hesap geçişleri ve temizlik öncesinde yedekler otomatik olarak oluşturulur.",
+      storageWarning:
+        "Yedek boyutu {{size}} (1.0 GB sınırını aşıyor). Disk alanı açmak için eski anlık görüntüleri temizleyin.",
+      pruneOld: "Eski Yedekleri Temizle",
+      pruning: "Temizleniyor...",
+      pruneSuccess: "{{count}} eski anlık görüntü temizlendi.",
+      restoreSnapshot: "Anlık Görüntüyü Geri Yükle",
+      restoreChat: "Sohbeti Geri Yükle",
+      restoring: "Geri yükleniyor...",
+      confirmFullTitle: "Tüm Anlık Görüntü Geri Yüklensin mi?",
+      confirmFullDesc:
+        "Mevcut sohbetleri bu anlık görüntüyle değiştirir. Geçmişi yeniden yüklemek için geri yükleme sonrası Antigravity'yi yeniden başlatın.",
+      confirmSingleTitle: "Tek Sohbet Geri Yüklensin mi?",
+      confirmSingleDesc:
+        "Diğer sohbetleri değiştirmeden bu sohbeti listenize geri yükler.",
+      restoreSuccess:
+        "Anlık görüntü başarıyla geri yüklendi. Yenilemek için Antigravity'yi yeniden başlatın.",
+      restoreSingleSuccess:
+        "Sohbet başarıyla geri yüklendi. Yenilemek için Antigravity'yi yeniden başlatın.",
+      errorTitle: "Yedek depolama geçici olarak meşgul",
+      errorDescription:
+        "Sohbet veritabanı başka bir işlem tarafından kullanılıyor. Lütfen bekleyip tekrar deneyin.",
+      retry: "Tekrar Dene",
+      cancel: "İptal",
+    },
+    chatHealth: {
+      title: "Sohbet Sağlığı ve Geri Yükleme",
+      description:
+        "Oturum bütünlüğünü denetleyin, bozuk sohbetleri temizleyin ve önceki yedekleri geri yükleyin.",
+      statusHealthy: "Tümü sağlam",
+      statusBroken: "{{count}} bozuk oturum",
+      statusBackups: "{{count}} yedek ({{size}})",
+      filterShowAll: "Yedeklenen tüm sohbetleri göster",
+      filterStaleOnly: "Yalnızca eksik veya eski sohbetler gösteriliyor",
+      pruneAllBroken: "Tüm Bozukları Temizle",
+      restoreSnapshot: "Tam Anlık Görüntüyü Geri Yükle",
+      restoreChat: "Sohbeti Geri Yükle",
+      pruneChat: "Temizle",
+      confirmPruneAllTitle: "Tüm Bozuk Sohbetler Temizlensin mi?",
+      confirmPruneAllDesc:
+        "Geçmiş dosyaları silinmiş olan bozuk sohbet kayıtlarını kalıcı olarak kaldırır.",
+      confirmRestoreTitle: "Tüm Anlık Görüntü Geri Yüklensin mi?",
+      confirmRestoreDesc:
+        "Mevcut sohbetleri bu anlık görüntüyle değiştirir. Geçmişi yeniden yüklemek için geri yükleme sonrası Antigravity'yi yeniden başlatın.",
+      confirmRestoreChatTitle: "Tek Sohbet Geri Yüklensin mi?",
+      confirmRestoreChatDesc:
+        "Diğer sohbetleri değiştirmeden bu sohbeti listenize geri yükler.",
+      loading: "Oturum durumu taranıyor...",
+      emptyTitle: "Sorun tespit edilmedi",
+      emptyDesc:
+        "Tüm sohbetler sağlam durumda ve geri yüklenecek bekleyen yedek yok.",
+      errorTitle: "Veritabanı geçici olarak meşgul",
+      errorDesc:
+        "Sohbet deposu başka bir işlem tarafından kullanılıyor. Lütfen bekleyip tekrar deneyin.",
+      retry: "Taramayı Yeniden Dene",
+      storageWarning:
+        "Yedek boyutu {{size}} (1.0 GB sınırını aşıyor). Disk alanı açmak için eski anlık görüntüleri temizleyin.",
+      pruneBackups: "Eski Yedekleri Temizle",
+      restoreSuccess:
+        "Sohbet başarıyla geri yüklendi. Yenilemek için Antigravity'yi yeniden başlatın.",
+      pruneSuccess: "{{count}} bozuk oturum başarıyla temizlendi.",
+      showMoreSnapshots: "{{count}} eski anlık görüntüyü göster",
+      showOlderSnapshots: "{{count}} eski anlık görüntüyü göster",
+      showFewerSnapshots: "Daha az anlık görüntü göster",
+      allBackupsSyncedTitle: "Tüm Yedekler Eşitlendi",
+      allSyncedTitle: "Tüm Yedekler Eşitlendi",
+      allBackupsSyncedDesc:
+        "Yedeklenen tüm oturumlar şu anda Antigravity içinde mevcut.",
+      allSyncedDesc:
+        "Yedeklenen tüm oturumlar şu anda Antigravity içinde mevcut.",
+      inspectFullHistory: "Tüm Geçmişi İncele",
+      cancel: "İptal",
     },
     version: "Sürüm",
     platform: "Platform",

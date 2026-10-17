@@ -56,7 +56,7 @@ export const MainLayout: React.FC = () => {
     {
       to: "/context",
       icon: Activity,
-      label: t("nav.context"),
+      label: t("nav.chat"),
     },
     {
       to: "/settings",
@@ -153,10 +153,10 @@ export const MainLayout: React.FC = () => {
                     key={item.to}
                     to={item.to}
                     className={cn(
-                      "flex items-center gap-3 rounded-md border-l-2 px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                      "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-all duration-200",
                       isActive
-                        ? "bg-primary/10 text-primary border-primary rounded-l-none pl-2 font-semibold"
-                        : "hover:bg-muted text-muted-foreground hover:text-foreground border-transparent",
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "hover:bg-muted text-muted-foreground hover:text-foreground",
                     )}
                   >
                     <item.icon className="h-4 w-4" />

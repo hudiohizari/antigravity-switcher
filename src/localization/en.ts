@@ -127,7 +127,18 @@ const en = {
     accounts: "Accounts",
     relay: "Remote Relay",
     context: "Chat Context",
+    chat: "Chat",
     settings: "Settings",
+  },
+  chat: {
+    tabs: {
+      context: "Chat Context",
+      manager: "Chat Manager",
+      contextDesc: "Real-time conversation token pressure and model ceilings",
+      managerDesc:
+        "Session integrity diagnostics, broken reference pruning, and backups",
+      ariaTabList: "Chat view switcher",
+    },
   },
   remote: {
     title: "Remote Control & Mobile Tethering",
@@ -451,6 +462,84 @@ const en = {
       showChats: "Show conversations",
       hideChats: "Hide conversations",
       toggleProjectAria: "Toggle conversation list for {{project}}",
+    },
+    chatBackup: {
+      title: "Chat Backups",
+      description:
+        "Safeguard conversation history across switches and cleanups with instant rollback.",
+      loading: "Loading snapshots...",
+      emptyTitle: "No backups available",
+      emptyDescription:
+        "Backups are created automatically before account switches and cleanup runs.",
+      storageWarning:
+        "Backup storage is {{size}} (exceeds 1.0 GB limit). Prune older snapshots to free disk space.",
+      pruneOld: "Prune Old Backups",
+      pruning: "Pruning...",
+      pruneSuccess: "Pruned {{count}} older snapshots.",
+      restoreSnapshot: "Restore Snapshot",
+      restoreChat: "Restore Chat",
+      restoring: "Restoring...",
+      confirmFullTitle: "Restore Full Snapshot?",
+      confirmFullDesc:
+        "Replaces current chats with this snapshot. Restart Antigravity after restore to reload history.",
+      confirmSingleTitle: "Restore Single Chat?",
+      confirmSingleDesc:
+        "Restores this chat into your conversation list without changing other chats.",
+      restoreSuccess:
+        "Snapshot restored successfully. Restart Antigravity to refresh.",
+      restoreSingleSuccess:
+        "Chat restored successfully. Restart Antigravity to refresh.",
+      errorTitle: "Backup storage temporarily busy",
+      errorDescription:
+        "The conversation database is in use by another process. Please wait a moment and try again.",
+      retry: "Retry",
+      cancel: "Cancel",
+    },
+    chatHealth: {
+      title: "Chat Health & Recovery",
+      description:
+        "Audit session integrity, prune broken chat references, and restore previous chat backups.",
+      statusHealthy: "All healthy",
+      statusBroken: "{{count}} broken sessions",
+      statusBackups: "{{count}} backups ({{size}})",
+      filterShowAll: "Show all backed-up chats",
+      filterStaleOnly: "Only showing stale or missing chats",
+      pruneAllBroken: "Prune All Broken",
+      restoreSnapshot: "Restore Full Snapshot",
+      restoreChat: "Restore Chat",
+      pruneChat: "Prune",
+      confirmPruneAllTitle: "Prune All Broken Chats?",
+      confirmPruneAllDesc:
+        "Permanently removes broken chat records whose trajectory files were deleted.",
+      confirmRestoreTitle: "Restore Full Snapshot?",
+      confirmRestoreDesc:
+        "Replaces current chats with this snapshot. Restart Antigravity after restore to reload history.",
+      confirmRestoreChatTitle: "Restore Single Chat?",
+      confirmRestoreChatDesc:
+        "Restores this chat into your conversation list without changing other chats.",
+      loading: "Scanning session health...",
+      emptyTitle: "No issues detected",
+      emptyDesc: "All chats are healthy and no restorable backups are pending.",
+      errorTitle: "Database temporarily busy",
+      errorDesc:
+        "The conversation store is in use by another process. Please wait a moment and try again.",
+      retry: "Retry Scan",
+      storageWarning:
+        "Backup storage is {{size}} (exceeds 1.0 GB limit). Prune older snapshots to free disk space.",
+      pruneBackups: "Prune Old Backups",
+      restoreSuccess:
+        "Chat restored successfully. Restart Antigravity to refresh.",
+      pruneSuccess: "Successfully pruned {{count}} broken sessions.",
+      showMoreSnapshots: "Show {{count}} older snapshots",
+      showOlderSnapshots: "Show {{count}} older snapshots",
+      showFewerSnapshots: "Show fewer snapshots",
+      allBackupsSyncedTitle: "All Backups in Sync",
+      allSyncedTitle: "All Backups in Sync",
+      allBackupsSyncedDesc:
+        "All backed-up sessions currently exist in Antigravity.",
+      allSyncedDesc: "All backed-up sessions currently exist in Antigravity.",
+      inspectFullHistory: "Inspect Full History",
+      cancel: "Cancel",
     },
     version: "Version",
     platform: "Platform",

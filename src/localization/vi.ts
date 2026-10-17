@@ -129,7 +129,19 @@ const vi = {
     accounts: "Tài khoản",
     relay: "Relay từ xa",
     context: "Ngữ cảnh trò chuyện",
+    chat: "Trò chuyện",
     settings: "Cài đặt",
+  },
+  chat: {
+    tabs: {
+      context: "Ngữ cảnh trò chuyện",
+      manager: "Quản lý trò chuyện",
+      contextDesc:
+        "Mức sử dụng token trò chuyện thời gian thực và giới hạn mô hình",
+      managerDesc:
+        "Chẩn đoán tính toàn vẹn phiên, dọn dẹp liên kết hỏng và sao lưu",
+      ariaTabList: "Chuyển đổi chế độ xem trò chuyện",
+    },
   },
   remote: {
     title: "Điều khiển từ xa & Chia sẻ mạng di động",
@@ -453,6 +465,86 @@ const vi = {
       showChats: "Hiển thị cuộc trò chuyện",
       hideChats: "Ẩn cuộc trò chuyện",
       toggleProjectAria: "Bật tắt danh sách cuộc trò chuyện cho {{project}}",
+    },
+    chatBackup: {
+      title: "Sao lưu cuộc trò chuyện",
+      description:
+        "Bảo vệ lịch sử trò chuyện khi chuyển đổi và dọn dẹp với khôi phục tức thì.",
+      loading: "Đang tải bản sao lưu...",
+      emptyTitle: "Không có bản sao lưu nào",
+      emptyDescription:
+        "Bản sao lưu được tạo tự động trước khi chuyển tài khoản và dọn dẹp.",
+      storageWarning:
+        "Bộ nhớ sao lưu là {{size}} (vượt giới hạn 1.0 GB). Hãy dọn bớt bản sao cũ để giải phóng dung lượng.",
+      pruneOld: "Dọn bản sao lưu cũ",
+      pruning: "Đang dọn dẹp...",
+      pruneSuccess: "Đã dọn dẹp {{count}} bản sao cũ.",
+      restoreSnapshot: "Khôi phục bản sao",
+      restoreChat: "Khôi phục cuộc trò chuyện",
+      restoring: "Đang khôi phục...",
+      confirmFullTitle: "Khôi phục toàn bộ bản sao?",
+      confirmFullDesc:
+        "Thay thế các cuộc trò chuyện hiện tại bằng bản sao này. Khởi động lại Antigravity sau khi khôi phục để tải lại lịch sử.",
+      confirmSingleTitle: "Khôi phục cuộc trò chuyện này?",
+      confirmSingleDesc:
+        "Khôi phục cuộc trò chuyện này vào danh sách mà không ảnh hưởng đến các cuộc trò chuyện khác.",
+      restoreSuccess:
+        "Khôi phục bản sao thành công. Khởi động lại Antigravity để làm mới.",
+      restoreSingleSuccess:
+        "Khôi phục cuộc trò chuyện thành công. Khởi động lại Antigravity để làm mới.",
+      errorTitle: "Bộ lưu trữ sao lưu tạm thời bận",
+      errorDescription:
+        "Cơ sở dữ liệu cuộc trò chuyện đang được tiến trình khác sử dụng. Vui lòng đợi và thử lại.",
+      retry: "Thử lại",
+      cancel: "Hủy",
+    },
+    chatHealth: {
+      title: "Tình trạng & khôi phục trò chuyện",
+      description:
+        "Kiểm tra tính toàn vẹn phiên, dọn dẹp liên kết trò chuyện hỏng và khôi phục bản sao lưu trước đó.",
+      statusHealthy: "Tất cả đều tốt",
+      statusBroken: "{{count}} phiên bị hỏng",
+      statusBackups: "{{count}} bản sao lưu ({{size}})",
+      filterShowAll: "Hiển thị tất cả cuộc trò chuyện đã sao lưu",
+      filterStaleOnly: "Chỉ hiển thị trò chuyện cũ hoặc bị thiếu",
+      pruneAllBroken: "Dọn tất cả mục hỏng",
+      restoreSnapshot: "Khôi phục toàn bộ bản sao",
+      restoreChat: "Khôi phục cuộc trò chuyện",
+      pruneChat: "Cắt bỏ",
+      confirmPruneAllTitle: "Dọn dẹp tất cả cuộc trò chuyện bị hỏng?",
+      confirmPruneAllDesc:
+        "Xóa vĩnh viễn các bản ghi trò chuyện bị hỏng đã mất tệp dữ liệu cục bộ.",
+      confirmRestoreTitle: "Khôi phục toàn bộ bản sao?",
+      confirmRestoreDesc:
+        "Thay thế các cuộc trò chuyện hiện tại bằng bản sao này. Khởi động lại Antigravity sau khi khôi phục để tải lại lịch sử.",
+      confirmRestoreChatTitle: "Khôi phục cuộc trò chuyện này?",
+      confirmRestoreChatDesc:
+        "Khôi phục cuộc trò chuyện này vào danh sách mà không ảnh hưởng đến các cuộc trò chuyện khác.",
+      loading: "Đang kiểm tra tình trạng phiên...",
+      emptyTitle: "Không phát hiện vấn đề nào",
+      emptyDesc:
+        "Tất cả cuộc trò chuyện đều tốt và không có bản sao lưu chờ khôi phục.",
+      errorTitle: "Cơ sở dữ liệu tạm thời bận",
+      errorDesc:
+        "Bộ lưu trữ cuộc trò chuyện đang được tiến trình khác sử dụng. Vui lòng đợi và thử lại.",
+      retry: "Thử quét lại",
+      storageWarning:
+        "Bộ nhớ sao lưu là {{size}} (vượt giới hạn 1.0 GB). Hãy dọn bớt bản sao cũ để giải phóng dung lượng.",
+      pruneBackups: "Dọn bản sao lưu cũ",
+      restoreSuccess:
+        "Khôi phục cuộc trò chuyện thành công. Khởi động lại Antigravity để làm mới.",
+      pruneSuccess: "Đã dọn dẹp thành công {{count}} phiên bị hỏng.",
+      showMoreSnapshots: "Hiển thị {{count}} bản sao lưu cũ hơn",
+      showOlderSnapshots: "Hiển thị {{count}} bản sao lưu cũ hơn",
+      showFewerSnapshots: "Hiển thị ít bản sao lưu hơn",
+      allBackupsSyncedTitle: "Tất cả bản sao lưu đã đồng bộ",
+      allSyncedTitle: "Tất cả bản sao lưu đã đồng bộ",
+      allBackupsSyncedDesc:
+        "Tất cả các phiên đã sao lưu hiện đang tồn tại trong Antigravity.",
+      allSyncedDesc:
+        "Tất cả các phiên đã sao lưu hiện đang tồn tại trong Antigravity.",
+      inspectFullHistory: "Xem toàn bộ lịch sử",
+      cancel: "Hủy",
     },
     version: "Phiên bản",
     platform: "Nền tảng",
