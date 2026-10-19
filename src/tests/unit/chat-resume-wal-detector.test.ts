@@ -439,13 +439,18 @@ describe("WAL Checkpoint & Active Turn Detection", () => {
   let tempDir: string;
   let buffer: SessionContinuityBuffer;
 
+  let homedirSpy: { mockRestore: () => void };
+
   beforeEach(() => {
     tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "chat-resume-test-"));
+    // Keep every Antigravity path inside the temp dir, never the real ~/.gemini.
+    homedirSpy = vi.spyOn(os, "homedir").mockReturnValue(tempDir);
     dbStore.clear();
     buffer = new SessionContinuityBuffer();
   });
 
   afterEach(() => {
+    homedirSpy.mockRestore();
     if (fs.existsSync(tempDir)) {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
