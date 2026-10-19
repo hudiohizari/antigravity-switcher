@@ -390,7 +390,7 @@ export class ContextTelemetryService {
     }
     const summariesDbPath = getAntigravityConversationSummariesDbPath(target);
 
-    if (!summariesDbPath || !fs.existsSync(summariesDbPath)) {
+    if (!summariesDbPath || !this.dbAccessor.stat(summariesDbPath)) {
       return {
         runtimeState: "antigravity_not_detected",
         hasActiveChat: false,

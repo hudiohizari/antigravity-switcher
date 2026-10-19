@@ -211,6 +211,22 @@ describe("ContextTelemetryService (Compaction FSM, Subagents & Caching)", () => 
       expect(res.primaryChat).toBeNull();
     });
 
+    it("returns antigravity_not_detected when summaries DB file stat returns null", async () => {
+      const mockAccessor: DatabaseAccessor = {
+        open: vi.fn(),
+        stat: () => null,
+      };
+
+      const mockService = new ContextTelemetryService(mockAccessor);
+      const res = await mockService.getActiveChatTelemetry("app");
+
+      expect(res.runtimeState).toBe("antigravity_not_detected");
+      expect(res.hasActiveChat).toBe(false);
+      expect(res.pollingIntervalMs).toBe(15000);
+      expect(res.primaryChat).toBeNull();
+      expect(mockAccessor.open).not.toHaveBeenCalled();
+    });
+
     it("returns idle_no_active_chat when conversation_summaries table is missing", async () => {
       const mockDb = {
         prepare: (query: string) => {
