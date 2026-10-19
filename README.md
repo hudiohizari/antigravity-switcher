@@ -56,8 +56,9 @@ Comprehensive session integrity auditing, automated multi-tier backups, and inst
 ![Chat Health, Auto-Backup & Recovery Cockpit](images/chat-health-preview.png)
 
 - **Multi-Target Health Telemetry**: Live inventory of registered, intact, and broken chat sessions with live target selection (App, IDE, CLI) and storage footprint metrics.
+- **Hierarchical Subagent Trees & Search**: Nests subagents under intact parents or deleted session containers with instant live filtering, bulk accordion toggles, and individual or batch healing.
 - **Automated Tiered Snapshots**: Non-blocking SQLite auto-backups triggered before account switches and cleaner operations, with intelligent 0-chat suppression and FIFO retention.
-- **Granular 1-Click Restore**: Restore individual missing conversations directly back into active workspace stores, or perform instant full-snapshot rollbacks.
+- **Granular 1-Click Restore & Safe Healing**: Restore missing conversations from snapshot archives or heal broken index references in-place without data loss.
 - **Schema-Drift Protection**: Dynamic SQLite column inspection and fallback synthesis ensure seamless restorations across disparate Antigravity schema revisions, paired with immediate protobuf mirror cache invalidation (`agyhub_summaries_proto.pb`).
 - **Project-Grouped Orphan Pruner**: Scans and safely purges broken session references evicted by Antigravity FIFO session limits, eliminating "Conversation unavailable" crashes while preserving restorable backups.
 - **Storage Protection**: Configurable 1.0 GB soft storage warning threshold with one-click manual backup pruning.
