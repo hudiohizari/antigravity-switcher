@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useToast } from "@/components/ui/use-toast";
-import { logger } from "@/shared/logging/logger";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import type { BrokenProjectGroup } from "@/modules/antigravity-runtime/conversation/types";
 import {
@@ -48,7 +47,7 @@ export function useChatHealthActions({
     toast({ title: t("settings.chatHealth.title"), description });
 
   const notifyError = (err: unknown) => {
-    logger.error("Chat health action failed", err);
+    console.error("Chat health action failed:", err);
     toast({
       title: t("settings.chatHealth.errorTitle"),
       description: t("settings.chatHealth.errorDesc"),
