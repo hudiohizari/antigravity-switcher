@@ -11,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/shared/ui/utils";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import type { InvalidChatsStats } from "@/modules/antigravity-runtime/conversation/types";
@@ -19,21 +18,14 @@ import type {
   BackupSnapshot,
   BackupStats,
 } from "@/modules/antigravity-runtime/backup/chatBackup";
-import { cleanInvalidChats } from "@/modules/antigravity-runtime/actions/conversationCleaner";
-import {
-  restoreChatBackupSnapshot,
-  restoreSingleChatBackup,
-  pruneChatBackups,
-} from "@/modules/antigravity-runtime/actions/chatBackup";
 import { getChatHealthReport } from "@/modules/antigravity-runtime/actions/chatHealth";
+import { flattenBrokenChats } from "@/modules/antigravity-runtime/conversation/subagentTree";
 import { ChatHealthTelemetryBar } from "./ChatHealthTelemetryBar";
 import { ChatHealthOrphanList } from "./ChatHealthOrphanList";
 import { ChatHealthSnapshotList } from "./ChatHealthSnapshotList";
 import { ChatHealthStorageWarningBanner } from "./ChatHealthStorageWarningBanner";
-import {
-  AntigravityChatHealthConfirmDialog,
-  type HealthConfirmAction,
-} from "./AntigravityChatHealthConfirmDialog";
+import { AntigravityChatHealthConfirmDialog } from "./AntigravityChatHealthConfirmDialog";
+import { useChatHealthActions } from "./useChatHealthActions";
 
 const TARGETS = [
   { id: "app" as const, labelKey: "settings.conversationCleaner.targetApp" },
@@ -43,7 +35,6 @@ const TARGETS = [
 
 export function AntigravityChatHealthSettings() {
   const { t } = useTranslation();
-  const { toast } = useToast();
   const [selectedTarget, setSelectedTarget] =
     useState<AntigravityAppTarget>("app");
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
@@ -56,9 +47,6 @@ export function AntigravityChatHealthSettings() {
   const [snapshots, setSnapshots] = useState<BackupSnapshot[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [showAll, setShowAll] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [confirmAction, setConfirmAction] =
-    useState<HealthConfirmAction | null>(null);
 
   const scanSequenceRef = useRef(0);
 
@@ -94,13 +82,32 @@ export function AntigravityChatHealthSettings() {
     loadData(target, showAll);
   };
 
-  const brokenCidSet = useMemo(() => {
-    const set = new Set<string>();
-    cleanerStats?.projectGroups?.forEach((g) => {
-      g.conversations.forEach((c) => set.add(c.conversationId));
-    });
-    return set;
-  }, [cleanerStats]);
+  const {
+    confirmAction,
+    setConfirmAction,
+    isProcessing,
+    requestPrune,
+    handleConfirmAction,
+    handlePruneBackups,
+  } = useChatHealthActions({
+    target: selectedTarget,
+    projectGroups: cleanerStats?.projectGroups,
+    reload: () => loadData(selectedTarget, showAll),
+  });
+
+  const brokenChats = useMemo(
+    () =>
+      (cleanerStats?.projectGroups ?? []).flatMap((group) =>
+        flattenBrokenChats(group.conversations),
+      ),
+    [cleanerStats],
+  );
+  const brokenCidSet = useMemo(
+    () => new Set(brokenChats.map((chat) => chat.conversationId)),
+    [brokenChats],
+  );
+  // Heal all leaves chats that have a backup for Restore.
+  const healableCount = brokenChats.filter((chat) => !chat.hasBackup).length;
 
   const toggleAccordion = (id: string) => {
     setExpandedIds((prev) => {
@@ -109,74 +116,6 @@ export function AntigravityChatHealthSettings() {
       else next.add(id);
       return next;
     });
-  };
-
-  const handlePruneBackups = async () => {
-    setIsProcessing(true);
-    try {
-      const res = await pruneChatBackups(selectedTarget);
-      toast({
-        title: t("settings.chatHealth.title"),
-        description: t("settings.chatHealth.pruneSuccess", {
-          count: res.prunedCount ?? 0,
-        }),
-      });
-      await loadData(selectedTarget, showAll);
-    } catch {
-      toast({
-        title: t("settings.chatHealth.errorTitle"),
-        description: t("settings.chatHealth.errorDesc"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleConfirmAction = async () => {
-    if (!confirmAction) return;
-    setIsProcessing(true);
-    try {
-      if (
-        confirmAction.type === "pruneAll" ||
-        confirmAction.type === "pruneSingle"
-      ) {
-        const res = await cleanInvalidChats(selectedTarget);
-        toast({
-          title: t("settings.chatHealth.title"),
-          description: t("settings.chatHealth.pruneSuccess", {
-            count: res.prunedCount ?? cleanerStats?.invalidChats ?? 0,
-          }),
-        });
-      } else {
-        if (confirmAction.type === "restoreFull") {
-          await restoreChatBackupSnapshot(
-            selectedTarget,
-            confirmAction.snapshotId,
-          );
-        } else {
-          await restoreSingleChatBackup(
-            selectedTarget,
-            confirmAction.snapshotId,
-            confirmAction.cid,
-          );
-        }
-        toast({
-          title: t("settings.chatHealth.title"),
-          description: t("settings.chatHealth.restoreSuccess"),
-        });
-      }
-      setConfirmAction(null);
-      await loadData(selectedTarget, showAll);
-    } catch {
-      toast({
-        title: t("settings.chatHealth.errorTitle"),
-        description: t("settings.chatHealth.errorDesc"),
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
   };
 
   const isStorageWarning =
@@ -333,16 +272,19 @@ export function AntigravityChatHealthSettings() {
               <ChatHealthOrphanList
                 projectGroups={cleanerStats.projectGroups}
                 onRestore={(snapshotId, cid) =>
-                  setConfirmAction({
-                    type: "restoreSingle",
-                    snapshotId,
-                    cid,
-                  })
+                  setConfirmAction({ type: "restoreSingle", snapshotId, cid })
                 }
-                onPruneSingle={(cid) =>
-                  setConfirmAction({ type: "pruneSingle", cid })
-                }
+                onPruneSingle={requestPrune}
                 onPruneAll={() => setConfirmAction({ type: "pruneAll" })}
+                onHealSingle={(cid) =>
+                  setConfirmAction({ type: "healSingle", cid })
+                }
+                onHealAll={
+                  healableCount > 0
+                    ? () =>
+                        setConfirmAction({ type: "healAll", count: healableCount })
+                    : undefined
+                }
                 disabled={isProcessing}
               />
             )}
@@ -369,15 +311,9 @@ export function AntigravityChatHealthSettings() {
                   setConfirmAction({ type: "restoreFull", snapshotId })
                 }
                 onRestoreSingle={(snapshotId, cid) =>
-                  setConfirmAction({
-                    type: "restoreSingle",
-                    snapshotId,
-                    cid,
-                  })
+                  setConfirmAction({ type: "restoreSingle", snapshotId, cid })
                 }
-                onPruneSingle={(cid) =>
-                  setConfirmAction({ type: "pruneSingle", cid })
-                }
+                onPruneSingle={requestPrune}
                 brokenCids={brokenCidSet}
                 showAll={showAll}
                 onToggleShowAll={() => setShowAll(true)}
@@ -393,6 +329,7 @@ export function AntigravityChatHealthSettings() {
         onClose={() => setConfirmAction(null)}
         onConfirm={handleConfirmAction}
         isProcessing={isProcessing}
+        brokenCount={brokenCount}
       />
     </Card>
   );

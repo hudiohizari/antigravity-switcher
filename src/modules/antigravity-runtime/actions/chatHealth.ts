@@ -7,3 +7,14 @@ export function getChatHealthReport(
 ) {
   return ipc.client.chatHealth.getHealth({ target, staleOnly });
 }
+
+export function healBrokenChat(
+  target?: AntigravityAppTarget,
+  cid?: string,
+) {
+  return ipc.client.chatHealth.healBrokenChat({ target, cid: cid || "" });
+}
+
+export function healAllBrokenChats(target?: AntigravityAppTarget) {
+  return ipc.client.chatHealth.healAllBrokenChats({ target });
+}

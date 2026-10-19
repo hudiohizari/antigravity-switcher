@@ -528,6 +528,13 @@ const fr = {
       restoreSnapshot: "Restaurer l'instantané complet",
       restoreChat: "Restaurer la conversation",
       pruneChat: "Purger",
+      heal: "Réparer",
+      healAllBroken: "Réparer tous les éléments corrompus",
+      confirmPruneTitle: "Purger la conversation endommagée ?",
+      confirmPruneDesc:
+        "Supprime définitivement cette référence de conversation endommagée d'Antigravity. Les autres conversations ne seront pas affectées.",
+      confirmPruneWithSubagentsDesc:
+        "Supprime définitivement cette conversation endommagée d'Antigravity, ainsi que les conversations de sous-agents endommagées qui en dépendent ({{count}}). Les autres conversations ne seront pas affectées.",
       confirmPruneAllTitle: "Purger toutes les conversations corrompues ?",
       confirmPruneAllDesc:
         "Supprime définitivement les enregistrements corrompus sans fichiers d'historique.",
@@ -537,6 +544,19 @@ const fr = {
       confirmRestoreChatTitle: "Restaurer cette conversation ?",
       confirmRestoreChatDesc:
         "Restaure cette conversation dans votre liste sans modifier les autres échanges.",
+      healConfirmTitle: "Réparer la session de conversation",
+      healConfirmDesc:
+        "Permet à Antigravity de rouvrir cette conversation sans planter. Ses messages sont perdus et ne peuvent pas être récupérés, la conversation s'ouvrira donc vide.",
+      healAllConfirmTitle: "Réparer toutes les sessions corrompues",
+      healAllConfirmDesc:
+        "Permet à Antigravity de rouvrir les conversations endommagées ({{count}}) sans planter. Leurs messages sont perdus, elles s'ouvriront donc vides. Les conversations qui ont une sauvegarde sont ignorées : utilisez Restaurer pour récupérer leur historique complet.",
+      healVsRestoreTitle: "Réparer ou restaurer",
+      healVsRestoreDesc:
+        "Restaurer récupère l'historique complet d'une conversation depuis une sauvegarde. Réparer sert aux conversations sans sauvegarde : Antigravity ne plante plus dessus, mais leurs messages restent perdus.",
+      healTooltip:
+        "Empêche Antigravity de planter sur cette conversation (aucune sauvegarde, ses messages restent perdus)",
+      restoreTooltip:
+        "Restaure l'historique complet de la conversation à partir d'un instantané de sauvegarde",
       loading: "Analyse de l'état des sessions...",
       emptyTitle: "Aucun problème détecté",
       emptyDesc:
@@ -551,6 +571,13 @@ const fr = {
       restoreSuccess:
         "Conversation restaurée avec succès. Redémarrez Antigravity pour actualiser.",
       pruneSuccess: "{{count}} sessions corrompues purgées avec succès.",
+      pruneSingleSuccess:
+        "Session de conversation endommagée purgée avec succès.",
+      pruneChatsSuccess:
+        "Conversations endommagées supprimées : {{count}}.",
+      healSuccess: "Conversations réparées : {{count}}.",
+      healPartial:
+        "Conversations réparées : {{healed}}. Échecs : {{failed}}.",
       showMoreSnapshots: "Afficher {{count}} instantanés plus anciens",
       showOlderSnapshots: "Afficher {{count}} instantanés plus anciens",
       showFewerSnapshots: "Afficher moins d'instantanés",
@@ -561,6 +588,25 @@ const fr = {
       allSyncedDesc:
         "Toutes les sessions sauvegardées existent actuellement dans Antigravity.",
       inspectFullHistory: "Inspecter l'historique complet",
+      searchPlaceholder: "Rechercher des conversations endommagées...",
+      noSearchResults:
+        'Aucune conversation endommagée ne correspond à "{{query}}"',
+      searchEmpty: 'Aucune conversation endommagée ne correspond à "{{query}}"',
+      clearSearch: "Effacer la recherche",
+      expandAll: "Tout développer",
+      collapseAll: "Tout réduire",
+      subagentsCount: "{{count}} sous-agents",
+      subagentBadge: "Sous-agent",
+      intactParentBadge: "Conversation principale",
+      intactParentTooltip:
+        "La conversation principale est saine sur le disque ; seuls ses sous-agents sont endommagés",
+      parentChat: "Parent : {{title}}",
+      parentReference: "Parent : {{title}}",
+      deletedSessionTitle: "Sous-agents résiduels de la session supprimée",
+      deletedSessionBadge: "Session supprimée",
+      deletedSessionTooltip:
+        "La conversation principale a été supprimée dans Antigravity ; ces sous-agents ont été laissés à l'abandon.",
+      pruneDeletedSession: "Purger tous les résidus",
       cancel: "Annuler",
     },
     version: "Version",

@@ -462,6 +462,13 @@ const zhCn = {
       restoreSnapshot: "恢复完整快照",
       restoreChat: "恢复此会话",
       pruneChat: "清理",
+      heal: "修复",
+      healAllBroken: "修复全部损坏项",
+      confirmPruneTitle: "清理已损坏的对话？",
+      confirmPruneDesc:
+        "从 Antigravity 中永久删除此损坏的对话引用。其他对话不受影响。",
+      confirmPruneWithSubagentsDesc:
+        "从 Antigravity 中永久删除此损坏的对话及其下方损坏的子代理对话（{{count}} 个）。其他对话不受影响。",
       confirmPruneAllTitle: "确认清理所有损坏会话？",
       confirmPruneAllDesc: "永久清除已丢失本地历史文件的损坏会话记录。",
       confirmRestoreTitle: "确认恢复完整快照？",
@@ -470,6 +477,18 @@ const zhCn = {
       confirmRestoreChatTitle: "确认恢复单个会话？",
       confirmRestoreChatDesc:
         "仅恢复此会话至列表中，不会影响其他任何会话记录。",
+      healConfirmTitle: "修复会话",
+      healConfirmDesc:
+        "让 Antigravity 能够重新打开此会话而不崩溃。该会话的消息已丢失且无法找回，因此会话打开后为空。",
+      healAllConfirmTitle: "修复所有损坏的会话",
+      healAllConfirmDesc:
+        "让 Antigravity 能够重新打开损坏的会话（{{count}} 个）而不崩溃。这些会话的消息已丢失，打开后为空。有备份的会话会被跳过：请使用恢复功能找回其完整历史。",
+      healVsRestoreTitle: "修复与恢复",
+      healVsRestoreDesc:
+        "恢复会从备份中找回会话的完整消息历史。修复适用于没有备份的会话：Antigravity 不再因其崩溃，但消息仍然丢失。",
+      healTooltip:
+        "阻止 Antigravity 在此会话上崩溃（无备份，消息仍然丢失）",
+      restoreTooltip: "从备份快照中恢复完整的会话历史记录",
       loading: "正在检查会话健康状态...",
       emptyTitle: "未检测到异常",
       emptyDesc: "所有会话均处于正常状态，暂无待恢复的备份。",
@@ -481,6 +500,12 @@ const zhCn = {
       pruneBackups: "清理较早备份",
       restoreSuccess: "会话已成功恢复。请重启 Antigravity 以刷新列表。",
       pruneSuccess: "已成功清理 {{count}} 个损坏会话。",
+      pruneSingleSuccess: "成功清理已损坏的对话会话。",
+      pruneChatsSuccess:
+        "已删除损坏会话：{{count}}。",
+      healSuccess: "已修复会话：{{count}}。",
+      healPartial:
+        "已修复会话：{{healed}}。修复失败：{{failed}}。",
       showMoreSnapshots: "显示 {{count}} 个较早的快照",
       showOlderSnapshots: "显示 {{count}} 个较早的快照",
       showFewerSnapshots: "收起较早快照",
@@ -489,6 +514,23 @@ const zhCn = {
       allBackupsSyncedDesc: "所有已备份的会话当前均存在于 Antigravity 中。",
       allSyncedDesc: "所有已备份的会话当前均存在于 Antigravity 中。",
       inspectFullHistory: "检查完整历史记录",
+      searchPlaceholder: "搜索损坏的会话...",
+      noSearchResults: '没有与"{{query}}"匹配的损坏会话',
+      searchEmpty: '没有与"{{query}}"匹配的损坏会话',
+      clearSearch: "清除搜索",
+      expandAll: "展开全部",
+      collapseAll: "折叠全部",
+      subagentsCount: "{{count}} 个子代理",
+      subagentBadge: "子代理",
+      intactParentBadge: "主会话",
+      intactParentTooltip: "主会话在磁盘上状态正常，仅其子代理损坏",
+      parentChat: "父级: {{title}}",
+      parentReference: "父级: {{title}}",
+      deletedSessionTitle: "已删除会话中残留的子智能体",
+      deletedSessionBadge: "已删除会话",
+      deletedSessionTooltip:
+        "主对话已在 Antigravity 中被删除；这些子智能体被遗留了下来。",
+      pruneDeletedSession: "清理所有残留",
       cancel: "取消",
     },
     version: "版本",

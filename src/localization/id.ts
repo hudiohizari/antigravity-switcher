@@ -515,6 +515,13 @@ const id = {
       restoreSnapshot: "Pulihkan Seluruh Snapshot",
       restoreChat: "Pulihkan Percakapan",
       pruneChat: "Pangkas",
+      heal: "Perbaiki",
+      healAllBroken: "Perbaiki Semua yang Rusak",
+      confirmPruneTitle: "Pangkas Obrolan Rusak?",
+      confirmPruneDesc:
+        "Menghapus referensi obrolan rusak ini secara permanen dari Antigravity. Percakapan lain tidak akan terpengaruh.",
+      confirmPruneWithSubagentsDesc:
+        "Menghapus percakapan rusak ini secara permanen dari Antigravity, beserta percakapan subagent rusak di bawahnya ({{count}}). Percakapan lain tidak akan terpengaruh.",
       confirmPruneAllTitle: "Pangkas Semua Percakapan Rusak?",
       confirmPruneAllDesc:
         "Menghapus permanen catatan percakapan rusak yang file riwayatnya telah terhapus.",
@@ -524,6 +531,19 @@ const id = {
       confirmRestoreChatTitle: "Pulihkan Percakapan Ini?",
       confirmRestoreChatDesc:
         "Memulihkan percakapan ini ke daftar Anda tanpa mengubah percakapan lainnya.",
+      healConfirmTitle: "Perbaiki Sesi Percakapan",
+      healConfirmDesc:
+        "Membuat Antigravity bisa membuka percakapan ini lagi tanpa crash. Pesannya sudah hilang dan tidak bisa dipulihkan, jadi percakapan akan terbuka kosong.",
+      healAllConfirmTitle: "Perbaiki Semua Sesi Percakapan Rusak",
+      healAllConfirmDesc:
+        "Membuat Antigravity bisa membuka percakapan yang rusak ({{count}}) lagi tanpa crash. Pesannya sudah hilang, jadi percakapan ini akan terbuka kosong. Percakapan yang punya cadangan dilewati: gunakan Pulihkan untuk mengembalikan seluruh riwayatnya.",
+      healVsRestoreTitle: "Perbaiki vs Pulihkan",
+      healVsRestoreDesc:
+        "Pulihkan mengembalikan seluruh riwayat pesan percakapan dari cadangan. Perbaiki untuk percakapan tanpa cadangan: Antigravity tidak lagi crash karenanya, tetapi pesannya tetap hilang.",
+      healTooltip:
+        "Hentikan crash Antigravity pada percakapan ini (tidak ada cadangan, jadi pesannya tetap hilang)",
+      restoreTooltip:
+        "Memulihkan seluruh riwayat percakapan dari snapshot cadangan",
       loading: "Memeriksa kesehatan sesi...",
       emptyTitle: "Tidak ada masalah terdeteksi",
       emptyDesc:
@@ -538,6 +558,12 @@ const id = {
       restoreSuccess:
         "Percakapan berhasil dipulihkan. Mulai ulang Antigravity untuk memperbarui.",
       pruneSuccess: "Berhasil memangkas {{count}} sesi rusak.",
+      pruneSingleSuccess: "Berhasil memangkas sesi obrolan yang rusak.",
+      pruneChatsSuccess:
+        "Percakapan rusak dihapus: {{count}}.",
+      healSuccess: "Percakapan diperbaiki: {{count}}.",
+      healPartial:
+        "Percakapan diperbaiki: {{healed}}. Gagal diperbaiki: {{failed}}.",
       showMoreSnapshots: "Tampilkan {{count}} snapshot lebih lama",
       showOlderSnapshots: "Tampilkan {{count}} snapshot lebih lama",
       showFewerSnapshots: "Sembunyikan snapshot tambahan",
@@ -547,6 +573,25 @@ const id = {
         "Semua sesi yang dicadangkan saat ini ada di Antigravity.",
       allSyncedDesc: "Semua sesi yang dicadangkan saat ini ada di Antigravity.",
       inspectFullHistory: "Periksa Riwayat Lengkap",
+      searchPlaceholder: "Cari percakapan rusak...",
+      noSearchResults:
+        'Tidak ada percakapan rusak yang cocok dengan "{{query}}"',
+      searchEmpty: 'Tidak ada percakapan rusak yang cocok dengan "{{query}}"',
+      clearSearch: "Hapus Pencarian",
+      expandAll: "Buka Semua",
+      collapseAll: "Tutup Semua",
+      subagentsCount: "{{count}} subagent",
+      subagentBadge: "Subagent",
+      intactParentBadge: "Percakapan Utama",
+      intactParentTooltip:
+        "Percakapan utama sehat di disk; hanya subagent di bawahnya yang rusak",
+      parentChat: "Induk: {{title}}",
+      parentReference: "Induk: {{title}}",
+      deletedSessionTitle: "Sisa Subagent dari Sesi yang Dihapus",
+      deletedSessionBadge: "Sesi Dihapus",
+      deletedSessionTooltip:
+        "Obrolan utama telah dihapus di Antigravity; subagent ini tertinggal.",
+      pruneDeletedSession: "Pangkas Semua Sisa",
       cancel: "Batal",
     },
     version: "Versi",

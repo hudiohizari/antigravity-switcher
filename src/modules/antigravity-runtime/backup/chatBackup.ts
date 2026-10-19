@@ -28,7 +28,14 @@ import {
   type SnapshotChatItem,
 } from "./types";
 
-import { getTargetDir, copyIfExists, getDirSize } from "./backupFs";
+import {
+  getTargetDir,
+  copyIfExists,
+  getDirSize,
+  copyRecentTrajectories,
+  createSnapshotDir,
+  type SnapshotLocation,
+} from "./backupFs";
 
 export * from "./types";
 export * from "./chatRestore";
@@ -114,10 +121,9 @@ function writeSnapshot(
   opt?: PathResolutionOptions,
   activeCid?: string,
   filterCids?: string[],
+  location: SnapshotLocation = createSnapshotDir(getTargetDir(canonical, opt), type),
 ): BackupSnapshot {
-  const snapshotId = `snapshot_${Date.now()}_${type === "pre_clean" ? "clean" : "switch"}`;
-  const snapDir = path.join(getTargetDir(canonical, opt), snapshotId);
-  fs.mkdirSync(snapDir, { recursive: true });
+  const { snapshotId, snapDir } = location;
   fs.copyFileSync(
     summariesDbPath,
     path.join(snapDir, "conversation_summaries.db"),
@@ -125,19 +131,16 @@ function writeSnapshot(
 
   const convDir = getAntigravityConversationsDir(canonical, opt);
   const annDir = getAntigravityAnnotationsDir(canonical, opt);
-  if (activeCid) {
-    if (convDir) {
-      copyIfExists(
-        path.join(convDir, `${activeCid}.db`),
-        path.join(snapDir, "conversations"),
-      );
-    }
-    if (annDir) {
-      copyIfExists(
-        path.join(annDir, `${activeCid}.pbtxt`),
-        path.join(snapDir, "annotations"),
-      );
-    }
+  const snapConvDir = path.join(snapDir, "conversations");
+  // Pre-switch snapshots already hold a consistent copy of the active chat.
+  if (activeCid && convDir && !fs.existsSync(path.join(snapConvDir, `${activeCid}.db`))) {
+    copyIfExists(path.join(convDir, `${activeCid}.db`), snapConvDir);
+  }
+  if (activeCid && annDir) {
+    copyIfExists(
+      path.join(annDir, `${activeCid}.pbtxt`),
+      path.join(snapDir, "annotations"),
+    );
   }
 
   const chats: SnapshotChatItem[] = [];
@@ -281,6 +284,14 @@ export async function createPreSwitchBackup(
           /* suppress */
         }
       }
+      const location = createSnapshotDir(getTargetDir(canonical, opt), "pre_switch");
+      await copyRecentTrajectories(
+        getAntigravityConversationsDir(canonical, opt),
+        path.join(location.snapDir, "conversations"),
+        effectiveCid,
+        CHAT_BACKUP_CONSTANTS.STORAGE_LIMIT_BYTES,
+        getDirSize(getBackupsDir(opt)),
+      );
       const snap = writeSnapshot(
         canonical,
         "pre_switch",
@@ -288,6 +299,8 @@ export async function createPreSwitchBackup(
         dbPath,
         opt,
         effectiveCid,
+        undefined,
+        location,
       );
       enforcePreSwitchFifo(canonical, opt);
       return snap;

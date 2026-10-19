@@ -134,6 +134,12 @@ import {
   pruneBackups,
   enforcePreSwitchFifo,
 } from "@/modules/antigravity-runtime/backup/chatBackup";
+import {
+  copyRecentTrajectories,
+  selectRecentTrajectories,
+} from "@/modules/antigravity-runtime/backup/backupFs";
+import Database from "better-sqlite3";
+import { logger } from "@/shared/logging/logger";
 import * as pathsModule from "@/shared/platform/paths";
 
 describe("Chat Auto-Backup and Restore Core Engine", () => {
@@ -227,6 +233,147 @@ describe("Chat Auto-Backup and Restore Core Engine", () => {
       const snapshot = await createPreSwitchBackup("app");
       expect(snapshot).not.toBeNull();
       expect(snapshot?.activeConversationId).toBe("latest-cid");
+    });
+
+    it("comprehensively backs up multiple active and recent trajectory files", async () => {
+      const activeCid = "cid-active";
+      const recentCid1 = "cid-recent-1";
+      const recentCid2 = "cid-recent-2";
+
+      createTestDb(fakeSummariesDbPath, [
+        { conversation_id: activeCid, title: "Active Chat", last_modified_time: Date.now() },
+        { conversation_id: recentCid1, title: "Recent Chat 1", last_modified_time: Date.now() - 1000 },
+        { conversation_id: recentCid2, title: "Recent Chat 2", last_modified_time: Date.now() - 2000 },
+      ]);
+
+      fs.writeFileSync(path.join(fakeConversationsDir, `${activeCid}.db`), "active traj");
+      fs.writeFileSync(path.join(fakeConversationsDir, `${recentCid1}.db`), "recent traj 1");
+      fs.writeFileSync(path.join(fakeConversationsDir, `${recentCid2}.db`), "recent traj 2");
+
+      const snapshot = await createPreSwitchBackup("app", activeCid);
+      expect(snapshot).not.toBeNull();
+      expect(snapshot?.chatCount).toBe(3);
+
+      const targetBackupsDir = path.join(fakeBackupsDir, "app", snapshot!.id, "conversations");
+      expect(fs.existsSync(path.join(targetBackupsDir, `${activeCid}.db`))).toBe(true);
+      expect(fs.existsSync(path.join(targetBackupsDir, `${recentCid1}.db`))).toBe(true);
+      expect(fs.existsSync(path.join(targetBackupsDir, `${recentCid2}.db`))).toBe(true);
+
+      for (const chat of snapshot!.chats) {
+        expect(chat.hasTrajectoryDb).toBe(true);
+      }
+    });
+
+    it("logs a warning and copies nothing when the conversations folder cannot be listed", async () => {
+      const warnSpy = vi.spyOn(logger, "warn");
+      const unreadableDir = path.join(tempBaseDir, "unreadable-conv");
+      const destDir = path.join(tempBaseDir, "dest");
+      fs.mkdirSync(unreadableDir, { recursive: true });
+
+      vi.spyOn(fs, "readdirSync").mockImplementationOnce(() => {
+        throw new Error("EACCES: permission denied");
+      });
+
+      await copyRecentTrajectories(unreadableDir, destDir);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Failed to list trajectory files for backup",
+        expect.any(Error),
+      );
+      expect(fs.existsSync(destDir)).toBe(false);
+    });
+
+    it("skips a trajectory file it cannot inspect and copies the rest", async () => {
+      const warnSpy = vi.spyOn(logger, "warn");
+      const testConvDir = path.join(tempBaseDir, "stat-fail-conv");
+      const destDir = path.join(tempBaseDir, "stat-fail-dest");
+      fs.mkdirSync(testConvDir, { recursive: true });
+      fs.writeFileSync(path.join(testConvDir, "broken.db"), "data");
+      fs.writeFileSync(path.join(testConvDir, "fine.db"), "data");
+
+      const realStat = fs.statSync;
+      vi.spyOn(fs, "statSync").mockImplementation(((p: fs.PathLike, ...rest: unknown[]) => {
+        if (String(p).endsWith("broken.db")) {
+          throw new Error("EIO: i/o error reading file stat");
+        }
+        return (realStat as (...args: unknown[]) => fs.Stats)(p, ...rest);
+      }) as typeof fs.statSync);
+
+      await copyRecentTrajectories(testConvDir, destDir);
+
+      expect(warnSpy).toHaveBeenCalledWith(
+        "Failed to inspect trajectory file broken.db",
+        expect.any(Error),
+      );
+      expect(fs.existsSync(path.join(destDir, "fine.db"))).toBe(true);
+      expect(fs.existsSync(path.join(destDir, "broken.db"))).toBe(false);
+    });
+
+    it("copies with SQLite's online backup when the database supports it", async () => {
+      const mockPrototype = (Database as unknown as { prototype: Record<string, unknown> }).prototype;
+      const convDir = path.join(tempBaseDir, "online-conv");
+      const destDir = path.join(tempBaseDir, "online-dest");
+      fs.mkdirSync(convDir, { recursive: true });
+      fs.writeFileSync(path.join(convDir, "chat.db"), "raw file bytes");
+      mockPrototype.backup = vi.fn(async (destination: string) => {
+        fs.writeFileSync(destination, "online backup copy");
+      });
+
+      try {
+        await copyRecentTrajectories(convDir, destDir, "chat");
+      } finally {
+        delete mockPrototype.backup;
+      }
+
+      expect(fs.readFileSync(path.join(destDir, "chat.db"), "utf8")).toBe("online backup copy");
+    });
+
+    describe("selectRecentTrajectories", () => {
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const now = Date.UTC(2026, 9, 19);
+      let convDir: string;
+
+      const writeTrajectory = (name: string, ageDays: number, bytes = 10) => {
+        const file = path.join(convDir, `${name}.db`);
+        fs.writeFileSync(file, "x".repeat(bytes));
+        const mtime = new Date(now - ageDays * DAY_MS);
+        fs.utimesSync(file, mtime, mtime);
+      };
+
+      beforeEach(() => {
+        convDir = path.join(tempBaseDir, "select-conv");
+        fs.mkdirSync(convDir, { recursive: true });
+      });
+
+      it("keeps the active chat first, then chats from the last 14 days, newest first", () => {
+        writeTrajectory("active", 40);
+        writeTrajectory("recent-old", 10);
+        writeTrajectory("recent-new", 1);
+        writeTrajectory("stale", 20);
+
+        const selected = selectRecentTrajectories(convDir, "active", 1_000_000, 0, now);
+
+        expect(selected).toEqual(["active.db", "recent-new.db", "recent-old.db"]);
+      });
+
+      it("keeps at most 50 trajectories", () => {
+        for (let i = 0; i < 55; i++) writeTrajectory(`chat-${i}`, i / 10);
+
+        const selected = selectRecentTrajectories(convDir, undefined, 1_000_000, 0, now);
+
+        expect(selected).toHaveLength(50);
+        expect(selected[0]).toBe("chat-0.db");
+      });
+
+      it("skips recent chats that would exceed the storage limit but always keeps the active chat", () => {
+        writeTrajectory("active", 0, 600);
+        writeTrajectory("big", 1, 500);
+        writeTrajectory("small", 2, 100);
+
+        const selected = selectRecentTrajectories(convDir, "active", 1000, 300, now);
+
+        expect(selected).toEqual(["active.db", "small.db"]);
+      });
     });
   });
 

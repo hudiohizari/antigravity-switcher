@@ -509,6 +509,13 @@ const tr = {
       restoreSnapshot: "Tam Anlık Görüntüyü Geri Yükle",
       restoreChat: "Sohbeti Geri Yükle",
       pruneChat: "Temizle",
+      heal: "Onar",
+      healAllBroken: "Tüm Bozukları Onar",
+      confirmPruneTitle: "Bozuk Sohbeti Temizle?",
+      confirmPruneDesc:
+        "Bu bozuk sohbet başvurusunu Antigravity üzerinden kalıcı olarak kaldırır. Diğer sohbetler etkilenmez.",
+      confirmPruneWithSubagentsDesc:
+        "Bu bozuk sohbeti, altındaki bozuk alt ajan sohbetleriyle ({{count}}) birlikte Antigravity'den kalıcı olarak kaldırır. Diğer sohbetler etkilenmez.",
       confirmPruneAllTitle: "Tüm Bozuk Sohbetler Temizlensin mi?",
       confirmPruneAllDesc:
         "Geçmiş dosyaları silinmiş olan bozuk sohbet kayıtlarını kalıcı olarak kaldırır.",
@@ -518,6 +525,19 @@ const tr = {
       confirmRestoreChatTitle: "Tek Sohbet Geri Yüklensin mi?",
       confirmRestoreChatDesc:
         "Diğer sohbetleri değiştirmeden bu sohbeti listenize geri yükler.",
+      healConfirmTitle: "Sohbet Oturumunu Onar",
+      healConfirmDesc:
+        "Antigravity'nin bu sohbeti çökmeden yeniden açmasını sağlar. Mesajları kaybolmuştur ve kurtarılamaz, bu yüzden sohbet boş açılır.",
+      healAllConfirmTitle: "Tüm Bozuk Sohbet Oturumlarını Onar",
+      healAllConfirmDesc:
+        "Antigravity'nin bozuk sohbetleri ({{count}}) çökmeden yeniden açmasını sağlar. Mesajları kaybolmuştur, bu yüzden bu sohbetler boş açılır. Yedeği olan sohbetler atlanır: tüm geçmişlerini geri almak için Geri Yükle'yi kullanın.",
+      healVsRestoreTitle: "Onar mı, Geri Yükle mi",
+      healVsRestoreDesc:
+        "Geri Yükle, bir sohbetin tüm mesaj geçmişini yedekten geri getirir. Onar, yedeği olmayan sohbetler içindir: Antigravity bu sohbetlerde çökmeyi bırakır, ancak mesajları kayıp kalır.",
+      healTooltip:
+        "Antigravity'nin bu sohbette çökmesini durdur (yedek yok, bu yüzden mesajlar kayıp kalır)",
+      restoreTooltip:
+        "Yedek anlık görüntüsünden tüm konuşma geçmişini geri yükler",
       loading: "Oturum durumu taranıyor...",
       emptyTitle: "Sorun tespit edilmedi",
       emptyDesc:
@@ -532,6 +552,12 @@ const tr = {
       restoreSuccess:
         "Sohbet başarıyla geri yüklendi. Yenilemek için Antigravity'yi yeniden başlatın.",
       pruneSuccess: "{{count}} bozuk oturum başarıyla temizlendi.",
+      pruneSingleSuccess: "Bozuk sohbet oturumu başarıyla temizlendi.",
+      pruneChatsSuccess:
+        "Kaldırılan bozuk sohbet: {{count}}.",
+      healSuccess: "Onarılan sohbet: {{count}}.",
+      healPartial:
+        "Onarılan sohbet: {{healed}}. Onarılamayan: {{failed}}.",
       showMoreSnapshots: "{{count}} eski anlık görüntüyü göster",
       showOlderSnapshots: "{{count}} eski anlık görüntüyü göster",
       showFewerSnapshots: "Daha az anlık görüntü göster",
@@ -542,6 +568,24 @@ const tr = {
       allSyncedDesc:
         "Yedeklenen tüm oturumlar şu anda Antigravity içinde mevcut.",
       inspectFullHistory: "Tüm Geçmişi İncele",
+      searchPlaceholder: "Bozuk sohbetleri ara...",
+      noSearchResults: '"{{query}}" ile eşleşen bozuk sohbet bulunamadı',
+      searchEmpty: '"{{query}}" ile eşleşen bozuk sohbet bulunamadı',
+      clearSearch: "Aramayı Temizle",
+      expandAll: "Tümünü Genişlet",
+      collapseAll: "Tümünü Daralt",
+      subagentsCount: "{{count}} alt ajan",
+      subagentBadge: "Alt Ajan",
+      intactParentBadge: "Ana Sohbet",
+      intactParentTooltip:
+        "Ana sohbet diskte sağlam; yalnızca alt ajanları bozuk",
+      parentChat: "Üst: {{title}}",
+      parentReference: "Üst: {{title}}",
+      deletedSessionTitle: "Silinmiş Oturumdan Kalan Alt Temsilciler",
+      deletedSessionBadge: "Silinmiş Oturum",
+      deletedSessionTooltip:
+        "Ana sohbet Antigravity içinde silinmiş; bu alt temsilciler sahipsiz kalmış.",
+      pruneDeletedSession: "Tüm Artıkları Temizle",
       cancel: "İptal",
     },
     version: "Sürüm",

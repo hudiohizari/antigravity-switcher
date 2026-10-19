@@ -8,3 +8,17 @@ export function getInvalidChatsStats(target?: AntigravityAppTarget) {
 export function cleanInvalidChats(target?: AntigravityAppTarget) {
   return ipc.client.conversationCleaner.clean({ target });
 }
+
+export function cleanSingleInvalidChat(
+  target?: AntigravityAppTarget,
+  cid?: string,
+) {
+  return ipc.client.conversationCleaner.cleanSingle({ target, cid: cid || "" });
+}
+
+export function cleanBatchInvalidChats(
+  target?: AntigravityAppTarget,
+  cids: string[] = [],
+) {
+  return ipc.client.conversationCleaner.cleanBatch({ target, cids });
+}

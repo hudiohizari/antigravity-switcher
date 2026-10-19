@@ -69,11 +69,12 @@ vi.mock("better-sqlite3", () => {
         if (sql.includes("DELETE FROM conversation_summaries")) {
           return {
             run: (id: string) => {
+              const prevCount = mockState.conversationSummaries.length;
               mockState.conversationSummaries =
                 mockState.conversationSummaries.filter(
                   (item) => item.conversation_id !== id,
                 );
-              return { changes: 1 };
+              return { changes: prevCount - mockState.conversationSummaries.length };
             },
           };
         }
@@ -121,6 +122,8 @@ vi.mock("@/shared/logging/logger", () => ({
 import {
   getInvalidChatsStats,
   cleanInvalidChats,
+  cleanSingleInvalidChat,
+  cleanBatchInvalidChats,
   parseWorkspaceInfo,
   parseTimestamp,
   CONVERSATION_CLEANER_CONSTANTS,
@@ -690,6 +693,324 @@ describe("Conversation Cleaner Service", () => {
       expect(cleanResult.prunedCount).toBe(0);
       expect(cleanResult.errors).toContain(
         "Table conversation_summaries does not exist.",
+      );
+    });
+  });
+
+  describe("Single Invalid Chat Pruning (cleanSingleInvalidChat)", () => {
+    it("rejects empty or whitespace cid with descriptive validation error", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+
+      const emptyResult = cleanSingleInvalidChat("app", "");
+      expect(emptyResult.totalChecked).toBe(0);
+      expect(emptyResult.prunedCount).toBe(0);
+      expect(emptyResult.success).toBe(false);
+      expect(emptyResult.errors).toContain(
+        "Invalid conversation ID: must not be empty",
+      );
+
+      const whitespaceResult = cleanSingleInvalidChat("app", "   ");
+      expect(whitespaceResult.totalChecked).toBe(0);
+      expect(whitespaceResult.prunedCount).toBe(0);
+      expect(whitespaceResult.success).toBe(false);
+      expect(whitespaceResult.errors).toContain(
+        "Invalid conversation ID: must not be empty",
+      );
+    });
+
+    it("rejects pruning an intact conversation trajectory if trajectory file exists on disk", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "intact-trajectory-1", title: "Active Work" },
+      ];
+      fs.writeFileSync(
+        path.join(conversationsDir, "intact-trajectory-1.db"),
+        "active trajectory data",
+      );
+
+      const result = cleanSingleInvalidChat("app", "intact-trajectory-1");
+
+      expect(result.totalChecked).toBe(1);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain(
+        "Cannot prune an intact conversation trajectory",
+      );
+      expect(mockState.conversationSummaries.length).toBe(1);
+      expect(mockState.conversationSummaries[0].conversation_id).toBe(
+        "intact-trajectory-1",
+      );
+    });
+
+    it("returns error when database file does not exist", () => {
+      const result = cleanSingleInvalidChat("ide", "orphan-chat-id");
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]).toContain("Conversation database not found");
+    });
+
+    it("returns error when conversation_summaries table does not exist", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.tableExists = false;
+
+      const result = cleanSingleInvalidChat("app", "orphan-chat-id");
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain(
+        "Table conversation_summaries does not exist.",
+      );
+    });
+
+    it("deletes ONLY the targeted cid, leaving remaining invalid and intact chats intact", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "intact-1", title: "Intact Conversation" },
+        { conversation_id: "orphan-target", title: "Targeted Orphan" },
+        { conversation_id: "orphan-remain", title: "Remaining Orphan" },
+      ];
+
+      // intact-1 has trajectory file
+      fs.writeFileSync(
+        path.join(conversationsDir, "intact-1.db"),
+        "trajectory binary",
+      );
+
+      // Candidate protobuf mirror files
+      const parentDir = path.dirname(summariesDbPath);
+      const proto1 = path.join(parentDir, "agyhub_summaries_proto.pb");
+      const proto2 = path.join(parentDir, "agyhub_summaries.pb");
+      fs.writeFileSync(proto1, "pb1");
+      fs.writeFileSync(proto2, "pb2");
+
+      const result = cleanSingleInvalidChat("app", "orphan-target");
+
+      expect(result.target).toBe("app");
+      expect(result.totalChecked).toBe(1);
+      expect(result.prunedCount).toBe(1);
+      expect(result.errors).toEqual([]);
+      expect(result.success).toBe(true);
+
+      // Verify transaction executed
+      expect(mockState.transactionCalled).toBe(true);
+
+      // Verify that ONLY orphan-target was pruned; intact-1 and orphan-remain remain intact!
+      const remainingIds = mockState.conversationSummaries.map(
+        (c) => c.conversation_id,
+      );
+      expect(remainingIds).toEqual(["intact-1", "orphan-remain"]);
+
+      // Verify protobuf mirror invalidation
+      expect(fs.existsSync(proto1)).toBe(false);
+      expect(fs.existsSync(proto2)).toBe(false);
+    });
+
+    it("reports not found when targeting a cid not present in conversation summaries", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "existing-chat", title: "Existing Chat" },
+      ];
+
+      const result = cleanSingleInvalidChat("app", "non-existent-cid");
+
+      expect(result.totalChecked).toBe(1);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors).toEqual(["Conversation not found: non-existent-cid"]);
+      expect(mockState.conversationSummaries.length).toBe(1);
+    });
+
+    it("captures transaction execution failures without throwing unhandled exceptions", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "orphan-fail", title: "Orphan Fail" },
+      ];
+      mockState.shouldThrowOnTransaction = new Error(
+        "disk I/O error during single prune transaction",
+      );
+
+      const result = cleanSingleInvalidChat("app", "orphan-fail");
+
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0]).toContain(
+        "Failed to clean conversation summaries: disk I/O error during single prune transaction",
+      );
+    });
+  });
+
+  describe("Batch Invalid Chat Pruning (cleanBatchInvalidChats)", () => {
+    it("rejects empty cids array with descriptive validation error", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+
+      const emptyResult = cleanBatchInvalidChats("app", []);
+      expect(emptyResult.totalChecked).toBe(0);
+      expect(emptyResult.prunedCount).toBe(0);
+      expect(emptyResult.success).toBe(false);
+      expect(emptyResult.errors).toContain(
+        "Invalid conversation IDs: must not be empty",
+      );
+
+      const whitespaceResult = cleanBatchInvalidChats("app", ["  ", ""]);
+      expect(whitespaceResult.totalChecked).toBe(0);
+      expect(whitespaceResult.prunedCount).toBe(0);
+      expect(whitespaceResult.success).toBe(false);
+      expect(whitespaceResult.errors).toContain(
+        "Invalid conversation IDs: must not be empty",
+      );
+    });
+
+    it("filters out intact conversation trajectories and leaves intact chats untouched", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "intact-1", title: "Intact Main Session" },
+        { conversation_id: "orphan-1", title: "Residual Subagent 1" },
+        { conversation_id: "orphan-2", title: "Residual Subagent 2" },
+      ];
+      fs.writeFileSync(
+        path.join(conversationsDir, "intact-1.db"),
+        "intact trajectory data",
+      );
+
+      const result = cleanBatchInvalidChats("app", [
+        "intact-1",
+        "orphan-1",
+        "orphan-2",
+      ]);
+
+      expect(result.totalChecked).toBe(2);
+      expect(result.prunedCount).toBe(2);
+      expect(result.success).toBe(true);
+      expect(result.errors).toEqual([]);
+
+      expect(mockState.conversationSummaries.map((c) => c.conversation_id)).toEqual([
+        "intact-1",
+      ]);
+    });
+
+    it("returns prunedCount 0 and success true when all candidate cids are intact trajectories", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "intact-1", title: "Intact Session 1" },
+        { conversation_id: "intact-2", title: "Intact Session 2" },
+      ];
+      fs.writeFileSync(
+        path.join(conversationsDir, "intact-1.db"),
+        "intact-1 db",
+      );
+      fs.writeFileSync(
+        path.join(conversationsDir, "intact-2.db"),
+        "intact-2 db",
+      );
+
+      const result = cleanBatchInvalidChats("app", ["intact-1", "intact-2"]);
+
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(mockState.conversationSummaries.length).toBe(2);
+    });
+
+    it("returns error when database file does not exist", () => {
+      const result = cleanBatchInvalidChats("ide", ["orphan-sub-1", "orphan-sub-2"]);
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBeGreaterThan(0);
+      expect(result.errors[0]).toContain("Conversation database not found");
+    });
+
+    it("returns error when conversation_summaries table does not exist", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.tableExists = false;
+
+      const result = cleanBatchInvalidChats("app", ["orphan-sub-1"]);
+      expect(result.totalChecked).toBe(0);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain(
+        "Table conversation_summaries does not exist.",
+      );
+    });
+
+    it("batch prunes multiple target cids atomically and invalidates protobuf mirrors", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "sub-1", title: "Subagent 1" },
+        { conversation_id: "sub-2", title: "Subagent 2" },
+        { conversation_id: "sub-3", title: "Subagent 3" },
+        { conversation_id: "unrelated-orphan", title: "Unrelated Orphan" },
+      ];
+
+      const parentDir = path.dirname(summariesDbPath);
+      const proto1 = path.join(parentDir, "agyhub_summaries_proto.pb");
+      const proto2 = path.join(parentDir, "agyhub_summaries.pb");
+      fs.writeFileSync(proto1, "mirror1");
+      fs.writeFileSync(proto2, "mirror2");
+
+      const result = cleanBatchInvalidChats("app", [
+        "sub-1",
+        "sub-2",
+        "sub-3",
+      ]);
+
+      expect(result.target).toBe("app");
+      expect(result.totalChecked).toBe(3);
+      expect(result.prunedCount).toBe(3);
+      expect(result.errors).toEqual([]);
+      expect(result.success).toBe(true);
+      expect(mockState.transactionCalled).toBe(true);
+
+      const remainingIds = mockState.conversationSummaries.map(
+        (c) => c.conversation_id,
+      );
+      expect(remainingIds).toEqual(["unrelated-orphan"]);
+
+      expect(fs.existsSync(proto1)).toBe(false);
+      expect(fs.existsSync(proto2)).toBe(false);
+    });
+
+    it("handles batch cids not found in database returning prunedCount reflecting actual deletions", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "sub-existing", title: "Existing Subagent" },
+      ];
+
+      const result = cleanBatchInvalidChats("app", [
+        "sub-existing",
+        "non-existent-sub",
+      ]);
+
+      expect(result.totalChecked).toBe(2);
+      expect(result.prunedCount).toBe(1);
+      expect(result.success).toBe(true);
+      expect(result.errors).toEqual([]);
+      expect(mockState.conversationSummaries.length).toBe(0);
+    });
+
+    it("captures transaction execution failures without throwing unhandled exceptions", () => {
+      fs.writeFileSync(summariesDbPath, "dummy sqlite header");
+      mockState.conversationSummaries = [
+        { conversation_id: "orphan-1", title: "Sub 1" },
+        { conversation_id: "orphan-2", title: "Sub 2" },
+      ];
+      mockState.shouldThrowOnTransaction = new Error(
+        "disk I/O error during batch prune transaction",
+      );
+
+      const result = cleanBatchInvalidChats("app", ["orphan-1", "orphan-2"]);
+
+      expect(result.totalChecked).toBe(2);
+      expect(result.prunedCount).toBe(0);
+      expect(result.success).toBe(false);
+      expect(result.errors.length).toBe(1);
+      expect(result.errors[0]).toContain(
+        "Failed to clean conversation summaries: disk I/O error during batch prune transaction",
       );
     });
   });

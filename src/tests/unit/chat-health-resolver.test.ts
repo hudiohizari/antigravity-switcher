@@ -28,6 +28,10 @@ interface MockSummaryRow {
   title?: string | null;
   workspace_uris?: string | null;
   last_modified_time?: string | number | null;
+  parent_conversation_id?: string | null;
+  nesting_depth?: number | null;
+  agent_name?: string | null;
+  preview?: string | null;
 }
 
 interface MockDbState {
@@ -717,6 +721,434 @@ describe("Chat Health Resolver", () => {
         staleOnly: true,
       });
       expect(res).toEqual(mockReport);
+    });
+  });
+
+  describe("Subagent Hierarchy & Tree Resolution", () => {
+    it("nests broken subagents under broken parent within same project group", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "parent-1",
+          title: "Root Cascade",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "sub-1",
+          title: "Subagent Task 1",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "parent-1",
+          nesting_depth: 1,
+          agent_name: "teamwork_preview_coder",
+        },
+        {
+          conversation_id: "sub-2",
+          title: "Subagent Task 2",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1200,
+          parent_conversation_id: "parent-1",
+          nesting_depth: 1,
+          agent_name: "teamwork_preview_reviewer",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.invalidChats).toBe(3);
+      expect(stats.projectGroups.length).toBe(1);
+
+      const group = stats.projectGroups[0];
+      expect(group.brokenCount).toBe(3);
+      expect(group.topLevelCount).toBe(1);
+      expect(group.conversations.length).toBe(1);
+
+      const parent = group.conversations[0];
+      expect(parent.conversationId).toBe("parent-1");
+      expect(parent.subagents?.length).toBe(2);
+      expect(parent.subagents?.[0].conversationId).toBe("sub-1");
+      expect(parent.subagents?.[0].agentName).toBe("Coder");
+      expect(parent.subagents?.[1].conversationId).toBe("sub-2");
+      expect(parent.subagents?.[1].agentName).toBe("Reviewer");
+    });
+
+    it("sorts top-level descending by updatedAt and subagents ascending by updatedAt", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "parent-early",
+          title: "Earlier Cascade",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "parent-late",
+          title: "Later Cascade",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 2000,
+        },
+        {
+          conversation_id: "sub-late-2",
+          title: "Step Two",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 2500,
+          parent_conversation_id: "parent-late",
+          nesting_depth: 1,
+          agent_name: "tester",
+        },
+        {
+          conversation_id: "sub-late-1",
+          title: "Step One",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 2100,
+          parent_conversation_id: "parent-late",
+          nesting_depth: 1,
+          agent_name: "planner",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(2);
+      expect(group.brokenCount).toBe(4);
+
+      expect(group.conversations[0].conversationId).toBe("parent-late");
+      expect(group.conversations[1].conversationId).toBe("parent-early");
+
+      const lateParent = group.conversations[0];
+      expect(lateParent.subagents?.length).toBe(2);
+      expect(lateParent.subagents?.[0].conversationId).toBe("sub-late-1");
+      expect(lateParent.subagents?.[1].conversationId).toBe("sub-late-2");
+    });
+
+    it("handles multi-depth subagent nesting correctly", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "root-tree",
+          title: "Root Tree",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "child-tree",
+          title: "Child Tree",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "root-tree",
+          nesting_depth: 1,
+          agent_name: "lead",
+        },
+        {
+          conversation_id: "grandchild-tree",
+          title: "Grandchild Tree",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1200,
+          parent_conversation_id: "child-tree",
+          nesting_depth: 2,
+          agent_name: "worker",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(1);
+      expect(group.brokenCount).toBe(3);
+      expect(group.conversations[0].conversationId).toBe("root-tree");
+
+      const child = group.conversations[0].subagents?.[0];
+      expect(child?.conversationId).toBe("child-tree");
+      expect(child?.nestingDepth).toBe(1);
+      expect(child?.subagents?.length).toBe(1);
+
+      const grandchild = child?.subagents?.[0];
+      expect(grandchild?.conversationId).toBe("grandchild-tree");
+      expect(grandchild?.nestingDepth).toBe(2);
+      expect(grandchild?.parentConversationId).toBe("child-tree");
+      expect(grandchild?.parentTitle).toBe("Child Tree");
+    });
+
+    it("groups broken subagent under intact parent container when parent trajectory is healthy on disk", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      fs.writeFileSync(
+        path.join(conversationsDir, "healthy-parent.db"),
+        "trajectory data",
+      );
+
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "healthy-parent",
+          title: "Healthy Parent Conversation",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "broken-sub",
+          title: "Orphaned Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "healthy-parent",
+          nesting_depth: 1,
+          agent_name: "teamwork_preview_document_researcher",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.validChats).toBe(1);
+      expect(stats.invalidChats).toBe(1);
+      expect(stats.projectGroups.length).toBe(1);
+
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(1);
+      expect(group.brokenCount).toBe(1);
+
+      const parentContainer = group.conversations[0];
+      expect(parentContainer.conversationId).toBe("healthy-parent");
+      expect(parentContainer.title).toBe("Healthy Parent Conversation");
+      expect(parentContainer.isIntactParent).toBe(true);
+      expect(parentContainer.hasBackup).toBe(false);
+      expect(parentContainer.subagents?.length).toBe(1);
+
+      const sub = parentContainer.subagents![0];
+      expect(sub.conversationId).toBe("broken-sub");
+      expect(sub.parentConversationId).toBe("healthy-parent");
+      expect(sub.parentTitle).toBe("Healthy Parent Conversation");
+      expect(sub.agentName).toBe("Researcher");
+    });
+
+    it("groups multiple broken subagents chronologically under an intact parent container", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      fs.writeFileSync(
+        path.join(conversationsDir, "main-cascade.db"),
+        "trajectory data",
+      );
+
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "main-cascade",
+          title: "Main Cascade Session",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "broken-sub-2",
+          title: "Reviewer Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1200,
+          parent_conversation_id: "main-cascade",
+          nesting_depth: 1,
+          agent_name: "reviewer",
+        },
+        {
+          conversation_id: "broken-sub-1",
+          title: "Challenger Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "main-cascade",
+          nesting_depth: 1,
+          agent_name: "challenger",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.validChats).toBe(1);
+      expect(stats.invalidChats).toBe(2);
+      expect(stats.projectGroups.length).toBe(1);
+
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(1);
+      expect(group.brokenCount).toBe(2);
+
+      const container = group.conversations[0];
+      expect(container.conversationId).toBe("main-cascade");
+      expect(container.isIntactParent).toBe(true);
+      expect(container.hasBackup).toBe(false);
+      expect(container.subagents?.map((s) => s.conversationId)).toEqual([
+        "broken-sub-1",
+        "broken-sub-2",
+      ]);
+    });
+
+    it("groups broken subagent under synthesized deleted session container when parent is missing from summaries database", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "broken-orphan",
+          title: "Standalone Orphan Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+          parent_conversation_id: "non-existent-parent",
+          nesting_depth: 1,
+          agent_name: "architect",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(1);
+      expect(group.brokenCount).toBe(1);
+
+      const container = group.conversations[0];
+      expect(container.conversationId).toBe("deleted-session-non-existent-parent");
+      expect(container.title).toBe("Residual Subagents from Deleted Session");
+      expect(container.isDeletedSessionContainer).toBe(true);
+      expect(container.isIntactParent).toBeUndefined();
+      expect(container.subagents?.length).toBe(1);
+
+      const item = container.subagents![0];
+      expect(item.conversationId).toBe("broken-orphan");
+      expect(item.parentConversationId).toBe("non-existent-parent");
+      expect(item.parentTitle).toBeUndefined();
+      expect(item.agentName).toBe("Architect");
+    });
+
+    it("preserves all sessions when circular parent references exist", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "cycle-a",
+          title: "Cycle A",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+          parent_conversation_id: "cycle-b",
+        },
+        {
+          conversation_id: "cycle-b",
+          title: "Cycle B",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "cycle-a",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      const group = stats.projectGroups[0];
+      expect(group.brokenCount).toBe(2);
+      expect(group.topLevelCount).toBeGreaterThanOrEqual(1);
+    });
+
+    it("keeps subagent at top level when parent belongs to another workspace", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "workspace-a-parent",
+          title: "Workspace A Parent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project-a"]),
+          last_modified_time: 1000,
+        },
+        {
+          conversation_id: "workspace-b-sub",
+          title: "Workspace B Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project-b"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "workspace-a-parent",
+          nesting_depth: 1,
+          agent_name: "coder",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.projectGroups.length).toBe(2);
+
+      const groupB = stats.projectGroups.find((g) => g.projectName === "project-b");
+      expect(groupB).toBeDefined();
+      expect(groupB?.topLevelCount).toBe(1);
+      expect(groupB?.brokenCount).toBe(1);
+
+      const subInB = groupB?.conversations[0];
+      expect(subInB?.conversationId).toBe("workspace-b-sub");
+      expect(subInB?.parentConversationId).toBe("workspace-a-parent");
+      expect(subInB?.parentTitle).toBe("Workspace A Parent");
+    });
+
+    it("never labels an intact subagent with nesting_depth > 0 as Main Chat", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      fs.writeFileSync(
+        path.join(conversationsDir, "orch-depth2.db"),
+        "trajectory data",
+      );
+
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "orch-depth2",
+          title: "Orchestrator 27df8007",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+          parent_conversation_id: "preview-depth1",
+          nesting_depth: 2,
+          agent_name: "orchestrator",
+        },
+        {
+          conversation_id: "broken-task",
+          title: "Broken Task Subagent",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "orch-depth2",
+          nesting_depth: 3,
+          agent_name: "coder",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.validChats).toBe(1);
+      expect(stats.invalidChats).toBe(1);
+      const group = stats.projectGroups[0];
+      const container = group.conversations[0];
+      expect(container.isIntactParent).toBeUndefined();
+      expect(container.isDeletedSessionContainer).toBe(true);
+      expect(container.conversationId).toBe("deleted-session-preview-depth1");
+    });
+
+    it("groups broken subagents under intact root main chat when intermediate subagents are intact", () => {
+      fs.writeFileSync(summariesDbPath, "sqlite header");
+      fs.writeFileSync(
+        path.join(conversationsDir, "main-root.db"),
+        "trajectory data",
+      );
+      fs.writeFileSync(
+        path.join(conversationsDir, "orch-sub.db"),
+        "trajectory data",
+      );
+
+      mockDbState.conversationSummaries = [
+        {
+          conversation_id: "main-root",
+          title: "Intact Main Chat",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1000,
+          nesting_depth: 0,
+        },
+        {
+          conversation_id: "orch-sub",
+          title: "Orchestrator Sub",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1050,
+          parent_conversation_id: "main-root",
+          nesting_depth: 1,
+          agent_name: "orchestrator",
+        },
+        {
+          conversation_id: "broken-leaf",
+          title: "Broken Leaf",
+          workspace_uris: JSON.stringify(["file:///Users/dev/project"]),
+          last_modified_time: 1100,
+          parent_conversation_id: "orch-sub",
+          nesting_depth: 2,
+          agent_name: "coder",
+        },
+      ];
+
+      const stats = resolveChatHealthStats("app");
+      expect(stats.validChats).toBe(2);
+      expect(stats.invalidChats).toBe(1);
+      const group = stats.projectGroups[0];
+      expect(group.topLevelCount).toBe(1);
+      const container = group.conversations[0];
+      expect(container.conversationId).toBe("main-root");
+      expect(container.isIntactParent).toBe(true);
+      expect(container.isDeletedSessionContainer).toBeUndefined();
+      expect(container.subagents?.length).toBe(1);
+      expect(container.subagents![0].conversationId).toBe("broken-leaf");
     });
   });
 });

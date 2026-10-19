@@ -511,6 +511,13 @@ const vi = {
       restoreSnapshot: "Khôi phục toàn bộ bản sao",
       restoreChat: "Khôi phục cuộc trò chuyện",
       pruneChat: "Cắt bỏ",
+      heal: "Khắc phục",
+      healAllBroken: "Khắc phục tất cả mục hỏng",
+      confirmPruneTitle: "Dọn dẹp đoạn chat bị hỏng?",
+      confirmPruneDesc:
+        "Xóa vĩnh viễn tham chiếu cuộc trò chuyện bị hỏng này khỏi Antigravity. Các cuộc trò chuyện khác sẽ không bị ảnh hưởng.",
+      confirmPruneWithSubagentsDesc:
+        "Xóa vĩnh viễn cuộc trò chuyện bị hỏng này khỏi Antigravity, cùng với các cuộc trò chuyện subagent bị hỏng bên dưới ({{count}}). Các cuộc trò chuyện khác sẽ không bị ảnh hưởng.",
       confirmPruneAllTitle: "Dọn dẹp tất cả cuộc trò chuyện bị hỏng?",
       confirmPruneAllDesc:
         "Xóa vĩnh viễn các bản ghi trò chuyện bị hỏng đã mất tệp dữ liệu cục bộ.",
@@ -520,6 +527,19 @@ const vi = {
       confirmRestoreChatTitle: "Khôi phục cuộc trò chuyện này?",
       confirmRestoreChatDesc:
         "Khôi phục cuộc trò chuyện này vào danh sách mà không ảnh hưởng đến các cuộc trò chuyện khác.",
+      healConfirmTitle: "Khắc phục phiên trò chuyện",
+      healConfirmDesc:
+        "Giúp Antigravity mở lại cuộc trò chuyện này mà không bị treo. Tin nhắn của nó đã mất và không thể khôi phục, nên cuộc trò chuyện sẽ mở ra trống.",
+      healAllConfirmTitle: "Khắc phục tất cả phiên trò chuyện bị hỏng",
+      healAllConfirmDesc:
+        "Giúp Antigravity mở lại các cuộc trò chuyện bị hỏng ({{count}}) mà không bị treo. Tin nhắn của chúng đã mất, nên các cuộc trò chuyện này sẽ mở ra trống. Các cuộc trò chuyện có bản sao lưu sẽ được bỏ qua: hãy dùng Khôi phục để lấy lại toàn bộ lịch sử.",
+      healVsRestoreTitle: "Khắc phục hay Khôi phục",
+      healVsRestoreDesc:
+        "Khôi phục lấy lại toàn bộ lịch sử tin nhắn của cuộc trò chuyện từ bản sao lưu. Khắc phục dành cho cuộc trò chuyện không có bản sao lưu: Antigravity không còn bị treo vì chúng, nhưng tin nhắn vẫn bị mất.",
+      healTooltip:
+        "Ngăn Antigravity bị treo ở cuộc trò chuyện này (không có bản sao lưu, nên tin nhắn vẫn bị mất)",
+      restoreTooltip:
+        "Khôi phục toàn bộ lịch sử cuộc trò chuyện từ bản sao lưu",
       loading: "Đang kiểm tra tình trạng phiên...",
       emptyTitle: "Không phát hiện vấn đề nào",
       emptyDesc:
@@ -534,6 +554,12 @@ const vi = {
       restoreSuccess:
         "Khôi phục cuộc trò chuyện thành công. Khởi động lại Antigravity để làm mới.",
       pruneSuccess: "Đã dọn dẹp thành công {{count}} phiên bị hỏng.",
+      pruneSingleSuccess: "Đã dọn dẹp thành công phiên trò chuyện bị hỏng.",
+      pruneChatsSuccess:
+        "Số cuộc trò chuyện bị hỏng đã xóa: {{count}}.",
+      healSuccess: "Số cuộc trò chuyện đã khắc phục: {{count}}.",
+      healPartial:
+        "Đã khắc phục: {{healed}}. Không thể khắc phục: {{failed}}.",
       showMoreSnapshots: "Hiển thị {{count}} bản sao lưu cũ hơn",
       showOlderSnapshots: "Hiển thị {{count}} bản sao lưu cũ hơn",
       showFewerSnapshots: "Hiển thị ít bản sao lưu hơn",
@@ -544,6 +570,26 @@ const vi = {
       allSyncedDesc:
         "Tất cả các phiên đã sao lưu hiện đang tồn tại trong Antigravity.",
       inspectFullHistory: "Xem toàn bộ lịch sử",
+      searchPlaceholder: "Tìm kiếm cuộc trò chuyện bị hỏng...",
+      noSearchResults:
+        'Không tìm thấy cuộc trò chuyện bị hỏng nào khớp với "{{query}}"',
+      searchEmpty:
+        'Không tìm thấy cuộc trò chuyện bị hỏng nào khớp với "{{query}}"',
+      clearSearch: "Xóa tìm kiếm",
+      expandAll: "Mở rộng tất cả",
+      collapseAll: "Thu gọn tất cả",
+      subagentsCount: "{{count}} subagent",
+      subagentBadge: "Subagent",
+      intactParentBadge: "Cuộc trò chuyện chính",
+      intactParentTooltip:
+        "Cuộc trò chuyện chính vẫn nguyên vẹn trên đĩa; chỉ có các subagent bị hỏng",
+      parentChat: "Gốc: {{title}}",
+      parentReference: "Gốc: {{title}}",
+      deletedSessionTitle: "Subagent còn lại từ phiên đã bị xóa",
+      deletedSessionBadge: "Phiên đã xóa",
+      deletedSessionTooltip:
+        "Đoạn chat chính đã bị xóa trong Antigravity; các subagent này bị bỏ lại.",
+      pruneDeletedSession: "Dọn dẹp tất cả còn lại",
       cancel: "Hủy",
     },
     version: "Phiên bản",

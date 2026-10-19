@@ -3,6 +3,8 @@ import { z } from "zod";
 import {
   getInvalidChatsStats,
   cleanInvalidChats,
+  cleanSingleInvalidChat,
+  cleanBatchInvalidChats,
 } from "../conversation/conversationCleaner";
 import { AntigravityAppTargetSchema } from "@/shared/platform/antigravityAppTarget";
 import {
@@ -21,18 +23,26 @@ export type {
   CleanInvalidChatsResult,
 };
 
-export const BrokenChatItemSchema = z.object({
-  conversationId: z.string(),
+export const BrokenChatItemSchema: z.ZodType<BrokenChatItem> = z.object({
+  conversationId: z.string().min(1),
   title: z.string(),
   updatedAt: z.number().optional(),
   hasBackup: z.boolean().optional(),
   matchingSnapshotId: z.string().optional(),
-}) satisfies z.ZodType<BrokenChatItem>;
+  parentConversationId: z.string().optional(),
+  parentTitle: z.string().optional(),
+  agentName: z.string().optional(),
+  nestingDepth: z.number().int().nonnegative().optional(),
+  subagents: z.lazy(() => z.array(BrokenChatItemSchema)).optional(),
+  isIntactParent: z.boolean().optional(),
+  isDeletedSessionContainer: z.boolean().optional(),
+});
 
 export const BrokenProjectGroupSchema = z.object({
   projectName: z.string(),
   workspacePath: z.string(),
   brokenCount: z.number().int().nonnegative(),
+  topLevelCount: z.number().int().nonnegative().optional(),
   conversations: z.array(BrokenChatItemSchema),
 }) satisfies z.ZodType<BrokenProjectGroup>;
 
@@ -53,6 +63,7 @@ export const CleanInvalidChatsResultSchema = z.object({
   totalChecked: z.number().int().nonnegative(),
   prunedCount: z.number().int().nonnegative(),
   errors: z.array(z.string()),
+  success: z.boolean().optional(),
 }) satisfies z.ZodType<CleanInvalidChatsResult>;
 
 export const conversationCleanerRouter = os
@@ -75,4 +86,24 @@ export const conversationCleanerRouter = os
       )
       .output(CleanInvalidChatsResultSchema)
       .handler(({ input }) => cleanInvalidChats(input.target)),
+
+    cleanSingle: os
+      .input(
+        z.object({
+          target: AntigravityAppTargetSchema.optional(),
+          cid: z.string().min(1),
+        }),
+      )
+      .output(CleanInvalidChatsResultSchema)
+      .handler(({ input }) => cleanSingleInvalidChat(input.target, input.cid)),
+
+    cleanBatch: os
+      .input(
+        z.object({
+          target: AntigravityAppTargetSchema.optional(),
+          cids: z.array(z.string().min(1)).min(1),
+        }),
+      )
+      .output(CleanInvalidChatsResultSchema)
+      .handler(({ input }) => cleanBatchInvalidChats(input.target, input.cids)),
   });

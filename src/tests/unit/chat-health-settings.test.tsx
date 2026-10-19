@@ -1,7 +1,13 @@
 // @vitest-environment happy-dom
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { AntigravityChatHealthSettings } from "@/modules/antigravity-runtime/components/AntigravityChatHealthSettings";
 import { ChatHealthTelemetryBar } from "@/modules/antigravity-runtime/components/ChatHealthTelemetryBar";
 import { ChatHealthOrphanRow } from "@/modules/antigravity-runtime/components/ChatHealthOrphanRow";
@@ -39,6 +45,18 @@ vi.mock("react-i18next", () => ({
         "settings.chatHealth.restoreSnapshot": "Restore Full Snapshot",
         "settings.chatHealth.restoreChat": "Restore Chat",
         "settings.chatHealth.pruneChat": "Prune",
+        "settings.chatHealth.heal": "Heal",
+        "settings.chatHealth.healAllBroken": "Heal All Broken",
+        "settings.chatHealth.healSuccess": `Successfully healed ${options?.count ?? 0} chat sessions.`,
+        "settings.chatHealth.healConfirmTitle": "Heal Chat Session",
+        "settings.chatHealth.healConfirmDesc":
+          "Synthesizes a compliant database shell so Antigravity can open this conversation cleanly without crashing.",
+        "settings.chatHealth.healAllConfirmTitle":
+          "Heal All Broken Chat Sessions",
+        "settings.chatHealth.healAllConfirmDesc": `Synthesizes compliant database shells for all ${options?.count ?? 0} broken conversations so Antigravity can open them without errors.`,
+        "settings.chatHealth.confirmPruneTitle": "Prune Broken Chat?",
+        "settings.chatHealth.confirmPruneDesc":
+          "Permanently removes this broken chat reference from Antigravity. Other conversations will not be affected.",
         "settings.chatHealth.confirmPruneAllTitle": "Prune All Broken Chats?",
         "settings.chatHealth.confirmPruneAllDesc":
           "Permanently removes broken chat records whose trajectory files were deleted.",
@@ -61,6 +79,15 @@ vi.mock("react-i18next", () => ({
         "settings.chatHealth.restoreSuccess":
           "Chat restored successfully. Restart Antigravity to refresh.",
         "settings.chatHealth.pruneSuccess": `Successfully pruned ${options?.count ?? 0} broken sessions.`,
+        "settings.chatHealth.pruneChatsSuccess": `Successfully pruned ${options?.count ?? 0} broken sessions.`,
+        "settings.chatHealth.healPartial": `Chats healed: ${options?.healed ?? 0}. Could not heal: ${options?.failed ?? 0}.`,
+        "settings.chatHealth.confirmPruneWithSubagentsDesc": `Removes this chat and its broken subagents (${options?.count ?? 0}).`,
+        "settings.chatHealth.pruneSingleSuccess":
+          "Successfully pruned broken chat session.",
+        "settings.chatHealth.deletedSessionBadge": "Deleted Session",
+        "settings.chatHealth.deletedSessionTooltip":
+          "The main chat was deleted in Antigravity; these subagents were left stranded.",
+        "settings.chatHealth.pruneDeletedSession": "Prune All Residuals",
         "settings.chatHealth.allSyncedTitle": "All Backups in Sync",
         "settings.chatHealth.allSyncedDesc":
           "All backed-up sessions currently exist in Antigravity.",
@@ -180,6 +207,54 @@ const mockDegradedReport: ChatHealthReport = {
     snapshots: [mockSnapshot],
   },
   snapshots: [mockSnapshot],
+};
+
+const mockDeletedSessionReport: ChatHealthReport = {
+  target: "app",
+  cleanerStats: {
+    target: "app",
+    summariesDbPath: "/path/to/summaries.db",
+    exists: true,
+    totalChats: 20,
+    invalidChats: 2,
+    validChats: 18,
+    projectGroups: [
+      {
+        projectName: "Residual Workspace",
+        workspacePath: "/users/test/workspace",
+        brokenCount: 2,
+        conversations: [
+          {
+            conversationId: "deleted-session-root-9999",
+            title: "Residual Subagents from Deleted Session",
+            isDeletedSessionContainer: true,
+            hasBackup: false,
+            subagents: [
+              {
+                conversationId: "stranded-subagent-1",
+                title: "Stranded Subagent 1",
+                hasBackup: false,
+              },
+              {
+                conversationId: "stranded-subagent-2",
+                title: "Stranded Subagent 2",
+                hasBackup: false,
+              },
+            ],
+          },
+        ],
+      },
+    ],
+  },
+  backupStats: {
+    target: "app",
+    totalSizeBytes: 10 * 1024 * 1024,
+    targetSizeBytes: 10 * 1024 * 1024,
+    snapshotCount: 0,
+    exceedsStorageLimit: false,
+    snapshots: [],
+  },
+  snapshots: [],
 };
 
 describe("AntigravityChatHealthSettings", () => {
@@ -469,15 +544,13 @@ describe("AntigravityChatHealthSettings", () => {
       vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
         mockDegradedReport as any,
       );
-      const pruneSpy = vi
-        .spyOn(cleanerActions, "cleanInvalidChats")
+      const pruneSingleSpy = vi
+        .spyOn(cleanerActions, "cleanSingleInvalidChat")
         .mockResolvedValue({
+          success: true,
           target: "app",
-          summariesDbPath: "/path/db",
-          totalChecked: 10,
-          prunedCount: 1,
-          errors: [],
-        });
+          cid: "conv-uuid-1111-2222",
+        } as any);
 
       render(<AntigravityChatHealthSettings />);
 
@@ -492,20 +565,133 @@ describe("AntigravityChatHealthSettings", () => {
       fireEvent.click(pruneBtn);
 
       await waitFor(() => {
-        expect(screen.getByText("Prune All Broken Chats?")).toBeDefined();
+        expect(screen.getByText("Prune Broken Chat?")).toBeDefined();
       });
 
       const confirmBtn = screen.getByRole("button", { name: "Prune" });
       fireEvent.click(confirmBtn);
 
       await waitFor(() => {
-        expect(pruneSpy).toHaveBeenCalledWith("app");
+        expect(pruneSingleSpy).toHaveBeenCalledWith(
+          "app",
+          "conv-uuid-1111-2222",
+        );
       });
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          description: "Successfully pruned 1 broken sessions.",
+          description: "Successfully pruned broken chat session.",
         }),
       );
+    });
+
+    it("triggers batch residual pruning for deleted-session- container via cleanBatchInvalidChats", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        mockDeletedSessionReport as any,
+      );
+      const pruneBatchSpy = vi
+        .spyOn(cleanerActions, "cleanBatchInvalidChats")
+        .mockResolvedValue({
+          success: true,
+          target: "app",
+          summariesDbPath: "/path/to/summaries.db",
+          totalChecked: 2,
+          prunedCount: 2,
+          errors: [],
+        });
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("orphan-row-deleted-session-root-9999"),
+        ).toBeDefined();
+      });
+
+      const orphanRow = screen.getByTestId(
+        "orphan-row-deleted-session-root-9999",
+      );
+      const pruneBtn = screen.getByRole("button", {
+        name: "Prune All Residuals",
+      });
+      fireEvent.click(pruneBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Prune All Residuals" }),
+        ).toBeDefined();
+        expect(
+          screen.getByText(
+            "The main chat was deleted in Antigravity; these subagents were left stranded.",
+          ),
+        ).toBeDefined();
+      });
+
+      const dialogEl = screen.getByRole("dialog");
+      const confirmBtn = within(dialogEl).getByRole("button", {
+        name: "Prune All Residuals",
+      });
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(pruneBatchSpy).toHaveBeenCalledWith("app", [
+          "stranded-subagent-1",
+          "stranded-subagent-2",
+        ]);
+      });
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Successfully pruned 2 broken sessions.",
+        }),
+      );
+    });
+
+    it("handles error when cleanBatchInvalidChats fails for deleted-session container", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        mockDeletedSessionReport as any,
+      );
+      vi.spyOn(cleanerActions, "cleanBatchInvalidChats").mockResolvedValue({
+        success: false,
+        target: "app",
+        summariesDbPath: "/path/to/summaries.db",
+        totalChecked: 2,
+        prunedCount: 0,
+        errors: ["Batch deletion failed"],
+      });
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("orphan-row-deleted-session-root-9999"),
+        ).toBeDefined();
+      });
+
+      const pruneBtn = screen.getByRole("button", {
+        name: "Prune All Residuals",
+      });
+      fireEvent.click(pruneBtn);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Prune All Residuals" }),
+        ).toBeDefined();
+      });
+
+      const dialogEl = screen.getByRole("dialog");
+      const confirmBtn = within(dialogEl).getByRole("button", {
+        name: "Prune All Residuals",
+      });
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: "destructive",
+            description:
+              "The conversation store is in use by another process. Please wait a moment and try again.",
+          }),
+        );
+      });
     });
 
     it("triggers batch prune all broken sessions", async () => {
@@ -582,6 +768,135 @@ describe("AntigravityChatHealthSettings", () => {
           "snap-2026-10-16-01",
         );
       });
+    });
+
+    it("triggers single chat heal via confirmation dialog", async () => {
+      const healReport: ChatHealthReport = {
+        ...mockDegradedReport,
+        cleanerStats: {
+          ...mockDegradedReport.cleanerStats,
+          projectGroups: [
+            {
+              projectName: "Main Workspace",
+              workspacePath: "/users/test/workspace",
+              brokenCount: 1,
+              conversations: [
+                {
+                  conversationId: "conv-uuid-heal-9999",
+                  title: "Broken Unbacked Chat",
+                  hasBackup: false,
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        healReport as any,
+      );
+      const healSingleSpy = vi
+        .spyOn(chatHealthActions, "healBrokenChat")
+        .mockResolvedValue({
+          success: true,
+          cid: "conv-uuid-heal-9999",
+        } as any);
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("orphan-row-conv-uuid-heal-9999"),
+        ).toBeDefined();
+      });
+
+      const healBtn = screen.getByRole("button", {
+        name: "Heal: Broken Unbacked Chat",
+      });
+      fireEvent.click(healBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Heal Chat Session")).toBeDefined();
+      });
+
+      const confirmBtn = screen.getByRole("button", { name: "Heal" });
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(healSingleSpy).toHaveBeenCalledWith(
+          "app",
+          "conv-uuid-heal-9999",
+        );
+      });
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Successfully healed 1 chat sessions.",
+        }),
+      );
+    });
+
+    it("triggers batch heal all broken sessions via confirmation dialog", async () => {
+      const healReport: ChatHealthReport = {
+        ...mockDegradedReport,
+        cleanerStats: {
+          ...mockDegradedReport.cleanerStats,
+          invalidChats: 3,
+          projectGroups: [
+            {
+              projectName: "Main Workspace",
+              workspacePath: "/users/test/workspace",
+              brokenCount: 3,
+              conversations: [
+                {
+                  conversationId: "conv-uuid-heal-1",
+                  title: "Broken 1",
+                  hasBackup: false,
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        healReport as any,
+      );
+      const healAllSpy = vi
+        .spyOn(chatHealthActions, "healAllBrokenChats")
+        .mockResolvedValue({
+          totalHealed: 3,
+          failedCount: 0,
+          errors: [],
+        } as any);
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Heal All Broken" }),
+        ).toBeDefined();
+      });
+
+      const healAllBtn = screen.getByRole("button", {
+        name: "Heal All Broken",
+      });
+      fireEvent.click(healAllBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Heal All Broken Chat Sessions")).toBeDefined();
+      });
+
+      const confirmBtn = screen.getByRole("button", {
+        name: "Heal All Broken",
+      });
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(healAllSpy).toHaveBeenCalledWith("app");
+      });
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          description: "Successfully healed 3 chat sessions.",
+        }),
+      );
     });
 
     it("handles error during action confirmation", async () => {
@@ -696,11 +1011,259 @@ describe("AntigravityChatHealthSettings", () => {
       // Test prune dialog from snapshot row
       fireEvent.click(pruneBtn);
       await waitFor(() => {
-        expect(screen.getByText("Prune All Broken Chats?")).toBeDefined();
+        expect(screen.getByText("Prune Broken Chat?")).toBeDefined();
       });
       fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
       await waitFor(() => {
-        expect(screen.queryByText("Prune All Broken Chats?")).toBeNull();
+        expect(screen.queryByText("Prune Broken Chat?")).toBeNull();
+      });
+    });
+
+    const reportWithChats = (
+      conversations: ChatHealthReport["cleanerStats"]["projectGroups"][number]["conversations"],
+    ): ChatHealthReport => ({
+      ...mockDegradedReport,
+      cleanerStats: {
+        ...mockDegradedReport.cleanerStats,
+        invalidChats: 2,
+        projectGroups: [
+          {
+            projectName: "Main Workspace",
+            workspacePath: "/users/test/workspace",
+            brokenCount: 2,
+            conversations,
+          },
+        ],
+      },
+    });
+
+    it("prunes a broken main chat together with its broken subagents", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        reportWithChats([
+          {
+            conversationId: "broken-main",
+            title: "Broken Main",
+            hasBackup: false,
+            subagents: [
+              {
+                conversationId: "broken-sub",
+                title: "Broken Sub",
+                parentConversationId: "broken-main",
+                hasBackup: false,
+              },
+            ],
+          },
+        ]) as any,
+      );
+      const batchSpy = vi.spyOn(cleanerActions, "cleanBatchInvalidChats").mockResolvedValue({
+        success: true,
+        target: "app",
+        summariesDbPath: "/path/to/summaries.db",
+        totalChecked: 2,
+        prunedCount: 2,
+        errors: [],
+      });
+      const singleSpy = vi.spyOn(cleanerActions, "cleanSingleInvalidChat");
+
+      render(<AntigravityChatHealthSettings />);
+      await waitFor(() => {
+        expect(screen.getByTestId("orphan-row-broken-main")).toBeDefined();
+      });
+
+      const mainRow = screen.getByTestId("orphan-row-broken-main");
+      fireEvent.click(within(mainRow).getByRole("button", { name: "Prune" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Removes this chat and its broken subagents (1).")).toBeDefined();
+      });
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Prune" }));
+
+      await waitFor(() => {
+        expect(batchSpy).toHaveBeenCalledWith("app", ["broken-main", "broken-sub"]);
+      });
+      expect(singleSpy).not.toHaveBeenCalled();
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Successfully pruned 2 broken sessions." }),
+      );
+    });
+
+    it("reports a partial heal-all result instead of plain success", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        reportWithChats([
+          { conversationId: "heal-ok", title: "Heal Ok", hasBackup: false },
+          { conversationId: "heal-fail", title: "Heal Fail", hasBackup: false },
+        ]) as any,
+      );
+      vi.spyOn(chatHealthActions, "healAllBrokenChats").mockResolvedValue({
+        totalHealed: 1,
+        failedCount: 1,
+        errors: ["Conversation not found: heal-fail"],
+      });
+
+      render(<AntigravityChatHealthSettings />);
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Heal All Broken" })).toBeDefined();
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Heal All Broken" }));
+      await waitFor(() => {
+        expect(screen.getByRole("dialog")).toBeDefined();
+      });
+      fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Heal All Broken" }));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({ description: "Chats healed: 1. Could not heal: 1." }),
+        );
+      });
+    });
+
+    it("offers no heal-all when every broken chat has a backup to restore", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        reportWithChats([
+          {
+            conversationId: "restorable",
+            title: "Restorable",
+            hasBackup: true,
+            matchingSnapshotId: "snapshot_1",
+          },
+        ]) as any,
+      );
+
+      render(<AntigravityChatHealthSettings />);
+      await waitFor(() => {
+        expect(screen.getByTestId("orphan-row-restorable")).toBeDefined();
+      });
+
+      expect(screen.queryByRole("button", { name: "Heal All Broken" })).toBeNull();
+    });
+
+    it("handles failure when healAllBrokenChats returns 0 healed and errors", async () => {
+      const healReport: ChatHealthReport = {
+        ...mockDegradedReport,
+        cleanerStats: {
+          ...mockDegradedReport.cleanerStats,
+          invalidChats: 1,
+          projectGroups: [
+            {
+              projectName: "Main Workspace",
+              workspacePath: "/users/test/workspace",
+              brokenCount: 1,
+              conversations: [
+                {
+                  conversationId: "conv-uuid-heal-fail",
+                  title: "Broken Fail",
+                  hasBackup: false,
+                },
+              ],
+            },
+          ],
+        },
+      };
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        healReport as any,
+      );
+      vi.spyOn(chatHealthActions, "healAllBrokenChats").mockResolvedValue({
+        totalHealed: 0,
+        failedCount: 1,
+        errors: ["Heal all failed error"],
+      } as any);
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Heal All Broken" }),
+        ).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Heal All Broken" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Heal All Broken Chat Sessions")).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Heal All Broken" }));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: "Database temporarily busy",
+            variant: "destructive",
+          }),
+        );
+      });
+    });
+
+    it("handles failure when cleanSingleInvalidChat returns success: false", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        mockDegradedReport as any,
+      );
+      vi.spyOn(cleanerActions, "cleanSingleInvalidChat").mockResolvedValue({
+        success: false,
+        cid: "conv-uuid-1111-2222",
+        errors: ["Prune failed"],
+      } as any);
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("orphan-row-conv-uuid-1111-2222"),
+        ).toBeDefined();
+      });
+
+      const orphanRow = screen.getByTestId("orphan-row-conv-uuid-1111-2222");
+      const pruneBtn = orphanRow.querySelectorAll("button")[1];
+      fireEvent.click(pruneBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText("Prune Broken Chat?")).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Prune" }));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: "destructive",
+          }),
+        );
+      });
+    });
+
+    it("handles failure when cleanInvalidChats returns success: false", async () => {
+      vi.spyOn(chatHealthActions, "getChatHealthReport").mockResolvedValue(
+        mockDegradedReport as any,
+      );
+      vi.spyOn(cleanerActions, "cleanInvalidChats").mockResolvedValue({
+        target: "app",
+        summariesDbPath: "/path/db",
+        totalChecked: 10,
+        prunedCount: 0,
+        errors: ["Prune all failed"],
+        success: false,
+      } as any);
+
+      render(<AntigravityChatHealthSettings />);
+
+      await waitFor(() => {
+        expect(screen.getByText("Prune All Broken")).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByText("Prune All Broken"));
+
+      await waitFor(() => {
+        expect(screen.getByText("Prune All Broken Chats?")).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Prune" }));
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variant: "destructive",
+          }),
+        );
       });
     });
   });

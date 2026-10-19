@@ -15,6 +15,24 @@ export interface BrokenChatItem {
   updatedAt?: number;
   hasBackup?: boolean;
   matchingSnapshotId?: string;
+  parentConversationId?: string;
+  parentTitle?: string;
+  agentName?: string;
+  nestingDepth?: number;
+  subagents?: BrokenChatItem[];
+  isIntactParent?: boolean;
+  isDeletedSessionContainer?: boolean;
+}
+
+/**
+ * Metadata for known intact parent conversations used for subagent tree grouping.
+ */
+export interface IntactParentInfo {
+  title?: string;
+  updatedAt?: number;
+  workspaceUris?: string | null;
+  nestingDepth?: number;
+  agentName?: string;
 }
 
 /**
@@ -24,6 +42,7 @@ export interface BrokenProjectGroup {
   projectName: string;
   workspacePath: string; // PII-masked absolute or relative path
   brokenCount: number;
+  topLevelCount?: number;
   conversations: BrokenChatItem[];
 }
 
@@ -49,6 +68,19 @@ export interface CleanInvalidChatsResult {
   summariesDbPath: string;
   totalChecked: number;
   prunedCount: number;
+  errors: string[];
+  success?: boolean;
+}
+
+export interface HealBrokenChatResult {
+  success: boolean;
+  cid: string;
+  error?: string;
+}
+
+export interface HealAllBrokenChatsResult {
+  totalHealed: number;
+  failedCount: number;
   errors: string[];
 }
 

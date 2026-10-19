@@ -508,6 +508,29 @@ const en = {
       restoreSnapshot: "Restore Full Snapshot",
       restoreChat: "Restore Chat",
       pruneChat: "Prune",
+      heal: "Heal",
+      healAllBroken: "Heal All Broken",
+      healSuccess: "Chats healed: {{count}}.",
+      healPartial:
+        "Chats healed: {{healed}}. Could not heal: {{failed}}.",
+      healConfirmTitle: "Heal Chat Session",
+      healConfirmDesc:
+        "Lets Antigravity open this chat again without crashing. Its messages are gone and cannot be recovered, so the chat will open empty.",
+      healAllConfirmTitle: "Heal All Broken Chat Sessions",
+      healAllConfirmDesc:
+        "Lets Antigravity open the broken chats ({{count}}) again without crashing. Their messages are gone, so these chats will open empty. Chats that have a backup are skipped: use Restore for those to get their full history back.",
+      healVsRestoreTitle: "Heal vs Restore",
+      healVsRestoreDesc:
+        "Restore brings back a chat's full message history from a backup. Heal is for chats without a backup: Antigravity stops crashing on them, but their messages stay lost.",
+      healTooltip:
+        "Stop Antigravity from crashing on this chat (no backup, so its messages stay lost)",
+      restoreTooltip:
+        "Restores complete conversation history from backup snapshot",
+      confirmPruneTitle: "Prune Broken Chat?",
+      confirmPruneDesc:
+        "Permanently removes this broken chat reference from Antigravity. Other conversations will not be affected.",
+      confirmPruneWithSubagentsDesc:
+        "Permanently removes this broken chat from Antigravity, together with the broken subagent chats under it ({{count}}). Other conversations will not be affected.",
       confirmPruneAllTitle: "Prune All Broken Chats?",
       confirmPruneAllDesc:
         "Permanently removes broken chat records whose trajectory files were deleted.",
@@ -530,6 +553,9 @@ const en = {
       restoreSuccess:
         "Chat restored successfully. Restart Antigravity to refresh.",
       pruneSuccess: "Successfully pruned {{count}} broken sessions.",
+      pruneSingleSuccess: "Successfully pruned broken chat session.",
+      pruneChatsSuccess:
+        "Broken chats removed: {{count}}.",
       showMoreSnapshots: "Show {{count}} older snapshots",
       showOlderSnapshots: "Show {{count}} older snapshots",
       showFewerSnapshots: "Show fewer snapshots",
@@ -539,6 +565,24 @@ const en = {
         "All backed-up sessions currently exist in Antigravity.",
       allSyncedDesc: "All backed-up sessions currently exist in Antigravity.",
       inspectFullHistory: "Inspect Full History",
+      searchPlaceholder: "Search broken chats...",
+      noSearchResults: 'No broken chats matching "{{query}}"',
+      searchEmpty: 'No broken chats matching "{{query}}"',
+      clearSearch: "Clear Search",
+      expandAll: "Expand All",
+      collapseAll: "Collapse All",
+      subagentsCount: "{{count}} subagents",
+      subagentBadge: "Subagent",
+      intactParentBadge: "Main Chat",
+      intactParentTooltip:
+        "Main conversation is healthy on disk; only its subagents are broken",
+      parentChat: "Parent: {{title}}",
+      parentReference: "Parent: {{title}}",
+      deletedSessionTitle: "Residual Subagents from Deleted Session",
+      deletedSessionBadge: "Deleted Session",
+      deletedSessionTooltip:
+        "The main chat was deleted in Antigravity; these subagents were left stranded.",
+      pruneDeletedSession: "Prune All Residuals",
       cancel: "Cancel",
     },
     version: "Version",
