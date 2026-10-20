@@ -224,26 +224,15 @@ export function AntigravityChatHealthSettings() {
 
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-1">
               <div className="flex items-center space-x-2">
-                <Badge
-                  variant="outline"
-                  className={cn(
-                    "text-xs px-2 py-0.5",
-                    isHealthy
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                      : "border-rose-500/30 bg-destructive/10 text-rose-600 dark:text-rose-400",
-                  )}
-                >
-                  {isHealthy ? (
+                {isHealthy && (
+                  <Badge
+                    variant="outline"
+                    className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs px-2 py-0.5"
+                  >
                     <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
-                  ) : (
-                    <AlertTriangle className="mr-1 h-3.5 w-3.5" />
-                  )}
-                  {isHealthy
-                    ? t("settings.chatHealth.statusHealthy")
-                    : t("settings.chatHealth.statusBroken", {
-                        count: brokenCount,
-                      })}
-                </Badge>
+                    {t("settings.chatHealth.statusHealthy")}
+                  </Badge>
+                )}
               </div>
 
               <div className="flex items-center space-x-2">
@@ -282,7 +271,10 @@ export function AntigravityChatHealthSettings() {
                 onHealAll={
                   healableCount > 0
                     ? () =>
-                        setConfirmAction({ type: "healAll", count: healableCount })
+                        setConfirmAction({
+                          type: "healAll",
+                          count: healableCount,
+                        })
                     : undefined
                 }
                 disabled={isProcessing}
