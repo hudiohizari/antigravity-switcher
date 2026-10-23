@@ -3,6 +3,13 @@ import { isString } from "lodash-es";
 import { getAntigravityVersion } from "@/modules/antigravity-runtime/utils/antigravityVersion";
 import { createAxiosHttpClient } from "@/shared/http/axios-json-client";
 import { logger } from "@/shared/logging/logger";
+import {
+  FALLBACK_CHANGELIST,
+  getCachedChangelist,
+  resolveInstalledChangelist,
+} from "./antigravity-changelist";
+
+export { FALLBACK_CHANGELIST, getCachedChangelist, resolveInstalledChangelist };
 
 const REMOTE_VERSION_URL =
   "https://antigravity-auto-updater-974169037036.us-central1.run.app";
@@ -65,8 +72,9 @@ export function buildUserAgent(
   version: string,
   platform: string = getPlatformTag(),
   arch: string = getArchTag(),
+  changelist: string = getCachedChangelist(),
 ): string {
-  return `antigravity/hub/${version} (aidev_client; os_type=${platform}; arch=${arch}; cl=1003475615; auth_method=oauth)`;
+  return `antigravity/hub/${version} (aidev_client; os_type=${platform}; arch=${arch}; cl=${changelist}; auth_method=oauth)`;
 }
 
 function compareSemverVersions(left: string, right: string): number {
@@ -184,6 +192,8 @@ async function resolveRemoteVersion(): Promise<{
 }
 
 async function resolveDefaultUserAgentResolution(): Promise<UserAgentResolution> {
+  await resolveInstalledChangelist();
+
   let bestVersion = FALLBACK_VERSION;
   let bestSource: UserAgentSource = "fallback";
 
