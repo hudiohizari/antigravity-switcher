@@ -7,7 +7,7 @@ import { logger } from "@/shared/logging/logger";
 const REMOTE_VERSION_URL =
   "https://antigravity-auto-updater-974169037036.us-central1.run.app";
 const CHANGELOG_URL = "https://antigravity.google/changelog";
-export const FALLBACK_VERSION = "2.0.3";
+export const FALLBACK_VERSION = "2.25.0";
 const DEFAULT_REMOTE_TIMEOUT_MS = 2500;
 const VERSION_REGEX = /\d+\.\d+\.\d+/g;
 const userAgentHttpClient = createAxiosHttpClient(axios.create());
@@ -38,7 +38,7 @@ function normalizeNonEmptyString(
   return trimmed;
 }
 
-function getPlatformTag(): string {
+export function getPlatformTag(): string {
   switch (process.platform) {
     case "win32":
       return "windows";
@@ -49,7 +49,7 @@ function getPlatformTag(): string {
   }
 }
 
-function getArchTag(): string {
+export function getArchTag(): string {
   if (process.arch === "x64") {
     return "amd64";
   }
@@ -61,8 +61,12 @@ function getArchTag(): string {
   return process.arch;
 }
 
-export function buildUserAgent(version: string): string {
-  return `antigravity/${version} ${getPlatformTag()}/${getArchTag()}`;
+export function buildUserAgent(
+  version: string,
+  platform: string = getPlatformTag(),
+  arch: string = getArchTag(),
+): string {
+  return `antigravity/hub/${version} (aidev_client; os_type=${platform}; arch=${arch}; cl=1003475615; auth_method=oauth)`;
 }
 
 function compareSemverVersions(left: string, right: string): number {

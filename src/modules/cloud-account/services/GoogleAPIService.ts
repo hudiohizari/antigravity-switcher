@@ -531,12 +531,17 @@ function sleep(ms: number): Promise<void> {
   });
 }
 
-function buildInternalApiHeaders(accessToken: string): Record<string, string> {
+export function buildInternalApiHeaders(
+  accessToken: string,
+  projectId?: string,
+): Record<string, string> {
   const discoveryVersion = resolveLocalInstalledVersion() ?? FALLBACK_VERSION;
+  const trimmed = projectId?.trim();
   return {
     Authorization: `Bearer ${accessToken}`,
     "User-Agent": buildUserAgent(discoveryVersion),
     "Content-Type": "application/json",
+    ...(trimmed ? { "X-Goog-User-Project": trimmed } : {}),
   };
 }
 
@@ -1085,7 +1090,7 @@ export class GoogleAPIService {
     let projectId: string | undefined;
     let subscriptionTier: string | undefined;
     let lastError: unknown;
-    const endpoints = [URLS.LOAD_PROJECT, URLS.DAILY_LOAD_PROJECT];
+    const endpoints = [URLS.DAILY_LOAD_PROJECT, URLS.LOAD_PROJECT];
 
     for (const endpoint of endpoints) {
       try {
@@ -1108,9 +1113,9 @@ export class GoogleAPIService {
           lastError = new Error(
             `HTTP ${response.status}: ${responseDataToText(response.data)}`,
           );
-          if (endpoint === URLS.LOAD_PROJECT && response.status === 429) {
+          if (endpoint === URLS.DAILY_LOAD_PROJECT && response.status === 429) {
             logger.warn(
-              "[GoogleAPIService] Prod loadCodeAssist returned 429, falling back to daily endpoint",
+              "[GoogleAPIService] Daily loadCodeAssist returned 429, falling back to prod endpoint",
             );
             continue;
           }
@@ -1128,7 +1133,7 @@ export class GoogleAPIService {
         break;
       }
 
-      if (endpoint !== URLS.LOAD_PROJECT || !isHttp429Error(lastError)) {
+      if (endpoint !== URLS.DAILY_LOAD_PROJECT || !isHttp429Error(lastError)) {
         break;
       }
     }
@@ -1267,7 +1272,10 @@ export class GoogleAPIService {
         try {
           const response = await requestGoogleApi(endpoint, {
             data: JSON.stringify(currentPayload),
-            headers: buildInternalApiHeaders(accessToken),
+            headers: buildInternalApiHeaders(
+              accessToken,
+              currentPayload.project,
+            ),
             method: "POST",
             signal: createGoogleApiRequestSignal(REQUEST_TIMEOUT_MS).signal,
             ...axiosOptions,
@@ -1311,7 +1319,7 @@ export class GoogleAPIService {
           const result = this.toQuotaData(data, subscriptionTier);
           const quotaGroups = await this.fetchQuotaSummary(
             accessToken,
-            projectId,
+            currentPayload.project,
             axiosOptions,
           );
           if (quotaGroups) {
@@ -1368,7 +1376,10 @@ export class GoogleAPIService {
         try {
           const response = await requestGoogleApi(endpoint, {
             data: JSON.stringify(currentPayload),
-            headers: buildInternalApiHeaders(accessToken),
+            headers: buildInternalApiHeaders(
+              accessToken,
+              currentPayload.project,
+            ),
             method: "POST",
             signal: createGoogleApiRequestSignal(REQUEST_TIMEOUT_MS).signal,
             ...axiosOptions,

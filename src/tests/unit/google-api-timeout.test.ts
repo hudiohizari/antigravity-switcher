@@ -880,7 +880,7 @@ describe("GoogleAPIService fetchQuota fallback policy", () => {
     expect(fetchMock.mock.calls[2]?.[1]?.body).toBe(JSON.stringify({}));
   });
 
-  it("falls back to sandbox loadCodeAssist when prod returns 429", async () => {
+  it("falls back to prod loadCodeAssist when daily returns 429", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -914,10 +914,10 @@ describe("GoogleAPIService fetchQuota fallback policy", () => {
       "sandbox-project",
     );
     expect(fetchMock.mock.calls[0]?.[0]).toBe(
-      "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+      "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     );
     expect(fetchMock.mock.calls[1]?.[0]).toBe(
-      "https://daily-cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
+      "https://cloudcode-pa.googleapis.com/v1internal:loadCodeAssist",
     );
   });
 
