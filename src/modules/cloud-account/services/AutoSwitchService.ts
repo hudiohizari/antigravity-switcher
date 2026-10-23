@@ -20,12 +20,21 @@ import {
 import { detectActiveTurn } from "@/modules/chat-resume/activeTurnDetector";
 import { chatResumeEvents } from "@/modules/chat-resume/telemetry";
 
+const ARGON_PLACEHOLDER_PATTERN = /^model_placeholder_m4(?:0[89]|1\d|2[01])$/;
+const CLAUDE_PLACEHOLDER_PATTERN = /^model_placeholder_m40[0-3]$/;
+
 export function resolveQuotaGroupId(modelId: string): string {
   const normalized = modelId.replace(/^models\//i, "").toLowerCase();
   if (normalized.includes("image")) {
     return normalized.includes("flash")
       ? "gemini-3.1-flash-image"
       : "gemini-3-pro-image";
+  }
+  if (
+    ARGON_PLACEHOLDER_PATTERN.test(normalized) ||
+    normalized.startsWith("gemini-4-argon")
+  ) {
+    return "gemini-4-argon";
   }
   if (normalized === "model_placeholder_m318" || normalized.includes("flash")) {
     return "gemini-3-flash";
@@ -35,6 +44,7 @@ export function resolveQuotaGroupId(modelId: string): string {
   }
   if (
     normalized === "model_placeholder_m26" ||
+    CLAUDE_PLACEHOLDER_PATTERN.test(normalized) ||
     normalized.includes("claude") ||
     normalized.includes("opus") ||
     normalized.includes("sonnet") ||
@@ -742,13 +752,17 @@ export class AutoSwitchService {
           const matchesTokens =
             targetTokens.length > 0 &&
             targetTokens.every((token) => cleanGroupText.includes(token));
+          const matchesGenericGeminiGroup =
+            targetGroupId.startsWith("gemini-") &&
+            cleanGroupText.includes("gemini models");
 
           if (
             groupText.includes(targetGroupId) ||
             cleanGroupText.includes(cleanTargetGroupId) ||
             groupText.includes(activeModel.toLowerCase()) ||
             cleanGroupText.includes(cleanActiveModel) ||
-            matchesTokens
+            matchesTokens ||
+            matchesGenericGeminiGroup
           ) {
             const lowestBucket = group.buckets.reduce(
               (min, b) => Math.min(min, b.remaining_fraction * 100),

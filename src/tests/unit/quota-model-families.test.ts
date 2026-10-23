@@ -61,6 +61,69 @@ describe("quota model families", () => {
     );
   });
 
+  it("routes claude-opus-5-5 variants and placeholders to claude-opus-5-5 family", () => {
+    expect(getQuotaModelFamilyId("claude-opus-5-5")).toBe("claude-opus-5-5");
+    expect(getQuotaModelFamilyId("claude-opus-5-5-medium")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("claude-opus-5-5-high")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("claude-opus-5-5-low")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("claude-opus-5-5-max")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("claude-5-5-opus-thinking")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("MODEL_PLACEHOLDER_M400")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("MODEL_PLACEHOLDER_M401")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("MODEL_PLACEHOLDER_M402")).toBe(
+      "claude-opus-5-5",
+    );
+    expect(getQuotaModelFamilyId("MODEL_PLACEHOLDER_M403")).toBe(
+      "claude-opus-5-5",
+    );
+
+    const aggregated = aggregateQuotaModelFamilies({
+      "claude-opus-5-5-medium": quota(50, "2026-10-23T12:00:00.000Z"),
+      MODEL_PLACEHOLDER_M401: quota(30, "2026-10-23T10:00:00.000Z"),
+    });
+
+    expect(aggregated["claude-opus-5-5"]).toMatchObject({
+      percentage: 30,
+      resetTime: "2026-10-23T10:00:00.000Z",
+      display_name: "Claude 5.5 Opus",
+    });
+  });
+
+  it("routes gemini-4-argon variants to gemini-4-argon family", () => {
+    expect(getQuotaModelFamilyId("gemini-4-argon")).toBe("gemini-4-argon");
+    expect(getQuotaModelFamilyId("gemini-4-argon-low")).toBe("gemini-4-argon");
+    expect(getQuotaModelFamilyId("gemini-4-argon-medium")).toBe(
+      "gemini-4-argon",
+    );
+    expect(getQuotaModelFamilyId("gemini-4-argon-high")).toBe("gemini-4-argon");
+    expect(
+      aggregateQuotaModelFamilies({
+        "gemini-4-argon": quota(90, "2026-10-23T12:00:00.000Z"),
+        "gemini-4-argon-low": quota(80, "2026-10-23T11:00:00.000Z"),
+        "gemini-4-argon-medium": quota(40, "2026-10-23T09:00:00.000Z"),
+        "gemini-4-argon-high": quota(70, "2026-10-23T10:00:00.000Z"),
+      })["gemini-4-argon"],
+    ).toMatchObject({
+      percentage: 40,
+      resetTime: "2026-10-23T09:00:00.000Z",
+      display_name: "Gemini 4 Argon",
+    });
+  });
+
   it("routes gemini-3.8-flash variants to gemini-3.8-flash family", () => {
     expect(getQuotaModelFamilyId("gemini-3.8-flash-high")).toBe(
       "gemini-3.8-flash",
@@ -89,17 +152,36 @@ describe("quota model families", () => {
 
   describe("getQuotaModelFamilyDisplayName and dynamic Claude family aggregation", () => {
     it("dynamically formats Claude families as Claude {Major}.{Minor} {Variant}", () => {
-      expect(getQuotaModelFamilyDisplayName("claude-opus-4-6")).toBe("Claude 4.6 Opus");
-      expect(getQuotaModelFamilyDisplayName("claude-sonnet-4-5")).toBe("Claude 4.5 Sonnet");
-      expect(getQuotaModelFamilyDisplayName("claude-haiku-4-5")).toBe("Claude 4.5 Haiku");
-      expect(getQuotaModelFamilyDisplayName("claude-opus-5-5")).toBe("Claude 5.5 Opus");
+      expect(getQuotaModelFamilyDisplayName("claude-opus-4-6")).toBe(
+        "Claude 4.6 Opus",
+      );
+      expect(getQuotaModelFamilyDisplayName("claude-sonnet-4-5")).toBe(
+        "Claude 4.5 Sonnet",
+      );
+      expect(getQuotaModelFamilyDisplayName("claude-haiku-4-5")).toBe(
+        "Claude 4.5 Haiku",
+      );
+      expect(getQuotaModelFamilyDisplayName("claude-opus-5-5")).toBe(
+        "Claude 5.5 Opus",
+      );
     });
 
     it("returns static display names for non-Claude families", () => {
-      expect(getQuotaModelFamilyDisplayName("gemini-3.1-pro")).toBe("Gemini 3.1 Pro");
-      expect(getQuotaModelFamilyDisplayName("gemini-3.8-flash")).toBe("Gemini 3.8 Flash");
-      expect(getQuotaModelFamilyDisplayName("gpt-oss-120b")).toBe("GPT OSS 120B");
-      expect(getQuotaModelFamilyDisplayName("unknown-vendor-v1")).toBeUndefined();
+      expect(getQuotaModelFamilyDisplayName("gemini-4-argon")).toBe(
+        "Gemini 4 Argon",
+      );
+      expect(getQuotaModelFamilyDisplayName("gemini-3.1-pro")).toBe(
+        "Gemini 3.1 Pro",
+      );
+      expect(getQuotaModelFamilyDisplayName("gemini-3.8-flash")).toBe(
+        "Gemini 3.8 Flash",
+      );
+      expect(getQuotaModelFamilyDisplayName("gpt-oss-120b")).toBe(
+        "GPT OSS 120B",
+      );
+      expect(
+        getQuotaModelFamilyDisplayName("unknown-vendor-v1"),
+      ).toBeUndefined();
     });
 
     it("aggregates Claude model families with dynamic family titles", () => {

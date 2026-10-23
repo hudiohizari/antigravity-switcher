@@ -2,6 +2,7 @@ import type { CloudQuotaModelInfo } from "@/modules/cloud-account/types";
 import { parseClaudeModel } from "@/modules/cloud-account/utils/model-display";
 
 const FAMILY_DISPLAY_NAMES: Record<string, string> = {
+  "gemini-4-argon": "Gemini 4 Argon",
   "gemini-3.1-pro": "Gemini 3.1 Pro",
   "gemini-3.8-flash": "Gemini 3.8 Flash",
   "gemini-3.5-flash": "Gemini 3.5 Flash",
@@ -49,6 +50,10 @@ export function getQuotaModelFamilyId(modelId: string): string {
     return "gemini-flash-lite";
   }
 
+  if (normalized.startsWith("gemini-4-argon")) {
+    return "gemini-4-argon";
+  }
+
   if (
     normalized.startsWith("gemini-3.1-pro") ||
     normalized === "gemini-pro" ||
@@ -69,11 +74,26 @@ export function getQuotaModelFamilyId(modelId: string): string {
     return "gemini-3.5-flash";
   }
 
+  if (
+    /^model_placeholder_m40[0-3]$/i.test(normalized) ||
+    normalized.startsWith("claude-opus-5-5") ||
+    normalized.startsWith("claude-5-5-opus")
+  ) {
+    return "claude-opus-5-5";
+  }
+
   const claudeFamily = normalized.match(
     /^claude-(sonnet|opus|haiku)-(\d+)-(\d+)/,
   );
   if (claudeFamily) {
     return `claude-${claudeFamily[1]}-${claudeFamily[2]}-${claudeFamily[3]}`;
+  }
+
+  const legacyClaudeFamily = normalized.match(
+    /^claude-(\d+)-(\d+)-(sonnet|opus|haiku)/,
+  );
+  if (legacyClaudeFamily) {
+    return `claude-${legacyClaudeFamily[3]}-${legacyClaudeFamily[1]}-${legacyClaudeFamily[2]}`;
   }
 
   if (normalized.startsWith("gpt-oss-120b")) {
