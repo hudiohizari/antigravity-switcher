@@ -29,7 +29,10 @@ function encodeTag(fieldNum: number, wireType: number): number[] {
 /**
  * Builds a length-delimited protobuf field (wireType = 2).
  */
-function encodeLengthDelimited(fieldNum: number, content: number[] | Uint8Array): number[] {
+function encodeLengthDelimited(
+  fieldNum: number,
+  content: number[] | Uint8Array,
+): number[] {
   const tag = encodeTag(fieldNum, 2);
   const len = encodeVarint(content.length);
   return [...tag, ...len, ...Array.from(content)];
@@ -66,7 +69,10 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
 
     // Submessage 20: model_enum KV tuple
     const kvString = "model_enum: MODEL_PLACEHOLDER_M318";
-    const submessage20Bytes = encodeLengthDelimited(20, new TextEncoder().encode(kvString));
+    const submessage20Bytes = encodeLengthDelimited(
+      20,
+      new TextEncoder().encode(kvString),
+    );
 
     // Construct Field 1:
     const field1Bytes = [
@@ -147,7 +153,9 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
   });
 
   it("absorbs completely random byte noise safely", () => {
-    const randomBytes = new Uint8Array([0xff, 0xfe, 0xfd, 0xaa, 0xbb, 0xcc, 0x01, 0x02]);
+    const randomBytes = new Uint8Array([
+      0xff, 0xfe, 0xfd, 0xaa, 0xbb, 0xcc, 0x01, 0x02,
+    ]);
     const metrics = parseGenMetadataProtobuf(randomBytes);
 
     expect(metrics.usedTokens).toBe(0);
@@ -156,11 +164,21 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
   it("skips 64-bit (wire type 1) and 32-bit (wire type 5) fields cleanly across all message levels", () => {
     const encodeFixed64 = (fieldNum: number) => [
       ...encodeTag(fieldNum, 1),
-      1, 2, 3, 4, 5, 6, 7, 8,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
     ];
     const encodeFixed32 = (fieldNum: number) => [
       ...encodeTag(fieldNum, 5),
-      1, 2, 3, 4,
+      1,
+      2,
+      3,
+      4,
     ];
 
     // Inside submessage 4
@@ -213,9 +231,7 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
 
   it("falls back to completion tokens baseline when usedTokens is 0 but completionTokens > 0", () => {
     // Submessage 4 where Tag 2 and Tag 5 are 0, but Tag 3 has completion tokens
-    const submessage4Bytes = [
-      ...encodeVarintField(3, 1500),
-    ];
+    const submessage4Bytes = [...encodeVarintField(3, 1500)];
 
     const field1Bytes = encodeLengthDelimited(4, submessage4Bytes);
     const topBytes = new Uint8Array(encodeLengthDelimited(1, field1Bytes));
@@ -252,6 +268,49 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
     expect(metrics.outputTokens).toBe(51);
     expect(metrics.modelEnumRaw).toBe("MODEL_PLACEHOLDER_M26");
     expect(metrics.isEstimated).toBe(true);
+
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 1418)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M418");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 408)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M408");
+
+    // Claude 5.5 Opus wire enums 1400..1403 and 400..403
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 1400)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M400");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 1401)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M401");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 1402)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M402");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 1403)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M403");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 400)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M400");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 401)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M401");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 402)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M402");
+    expect(
+      parseStepMetadataProtobuf(new Uint8Array(encodeVarintField(11, 403)))
+        .modelEnumRaw,
+    ).toBe("MODEL_PLACEHOLDER_M403");
   });
 
   it("extracts maxContextTokens from Field 1 -> Field 9 (ChatStartMetadata) -> Field 10 (ContextWindowMetadata) -> Field 4", () => {
@@ -270,10 +329,7 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
     const field4Bytes = encodeLengthDelimited(4, tokenAccountingBytes);
 
     // Field 1: contains Field 4 and Field 9
-    const field1Bytes = [
-      ...field4Bytes,
-      ...field9Bytes,
-    ];
+    const field1Bytes = [...field4Bytes, ...field9Bytes];
 
     // Top message
     const topBytes = new Uint8Array(encodeLengthDelimited(1, field1Bytes));
@@ -339,10 +395,7 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
       ];
 
       // Intermediate 64-bit varint field (Field 3, wireType = 0)
-      const field3VarintField = [
-        ...encodeTag(3, 0),
-        ...negativeOneVarint,
-      ];
+      const field3VarintField = [...encodeTag(3, 0), ...negativeOneVarint];
 
       // Field 10 (ContextWindowMetadata): contains Field 4 (max_context_tokens = 256_000)
       const contextWindowBytes = encodeVarintField(4, 256_000);
@@ -362,10 +415,7 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
       const field4Bytes = encodeLengthDelimited(4, tokenAccountingBytes);
 
       // Field 1: contains Field 4 and Field 9
-      const field1Bytes = [
-        ...field4Bytes,
-        ...field9Bytes,
-      ];
+      const field1Bytes = [...field4Bytes, ...field9Bytes];
 
       // Top message
       const topBytes = new Uint8Array(encodeLengthDelimited(1, field1Bytes));
@@ -385,10 +435,7 @@ describe("genMetadataParser (Pure Protobuf Decoding)", () => {
       ];
 
       // Intermediate varint inside Field 10 before Field 4
-      const nestedVarintField = [
-        ...encodeTag(2, 0),
-        ...negativeOneVarint,
-      ];
+      const nestedVarintField = [...encodeTag(2, 0), ...negativeOneVarint];
       const contextWindowBytes = [
         ...nestedVarintField,
         ...encodeVarintField(4, 256_000),

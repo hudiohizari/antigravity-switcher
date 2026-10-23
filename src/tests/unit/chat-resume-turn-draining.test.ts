@@ -142,7 +142,24 @@ describe("Chat Resume Detection & Turn Draining", () => {
       expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M318")).toBe(
         "gemini-3-flash",
       );
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M408")).toBe(
+        "gemini-4-argon",
+      );
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M418")).toBe(
+        "gemini-4-argon",
+      );
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M421")).toBe(
+        "gemini-4-argon",
+      );
+      expect(resolveQuotaGroupId("gemini-4-argon-medium")).toBe(
+        "gemini-4-argon",
+      );
       expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M26")).toBe("claude");
+      expect(resolveQuotaGroupId("claude-opus-5-5-medium")).toBe("claude");
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M400")).toBe("claude");
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M401")).toBe("claude");
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M402")).toBe("claude");
+      expect(resolveQuotaGroupId("MODEL_PLACEHOLDER_M403")).toBe("claude");
       expect(resolveQuotaGroupId("unknown-model-xyz")).toBe(
         "unknown-model-xyz",
       );
@@ -191,7 +208,7 @@ describe("Chat Resume Detection & Turn Draining", () => {
       expect(AutoSwitchService.isAccountDepleted(account)).toBe(true);
     });
 
-    it("evaluates depletion correctly when activeModel is a protobuf enum", () => {
+    it("evaluates depletion correctly when activeModel is a protobuf enum or matches generic Gemini Models quota group", () => {
       const geminiDepletedAccount: CloudAccount = {
         id: "acc-gemini-depleted",
         provider: "google",
@@ -217,6 +234,19 @@ describe("Chat Resume Detection & Turn Draining", () => {
               resetTime: new Date(Date.now() + 3600000).toISOString(),
             },
           },
+          quota_groups: [
+            {
+              display_name: "Gemini Models",
+              buckets: [
+                {
+                  bucket_id: "gemini-5h",
+                  window: "5h",
+                  remaining_fraction: 0.8,
+                  reset_time: "",
+                },
+              ],
+            },
+          ],
         },
       };
 
@@ -227,6 +257,20 @@ describe("Chat Resume Detection & Turn Draining", () => {
           "MODEL_PLACEHOLDER_M318",
         ),
       ).toBe(true);
+
+      // MODEL_PLACEHOLDER_M418 / gemini-4-argon-medium resolves to gemini-4-argon and matches generic "Gemini Models" group (80% healthy)
+      expect(
+        AutoSwitchService.isAccountDepleted(
+          geminiDepletedAccount,
+          "MODEL_PLACEHOLDER_M418",
+        ),
+      ).toBe(false);
+      expect(
+        AutoSwitchService.isAccountDepleted(
+          geminiDepletedAccount,
+          "gemini-4-argon-medium",
+        ),
+      ).toBe(false);
 
       // MODEL_PLACEHOLDER_M26 resolves to claude; since neither models nor quota_groups match, falls back to unscoped
       expect(

@@ -209,7 +209,12 @@ function parseField1Submessage(
 
       if (fieldNum === 4) {
         // Tag 4: Token metrics submessage
-        const subResult = parseTokenAccountingSubmessage(buf, subStart, subEnd, metrics);
+        const subResult = parseTokenAccountingSubmessage(
+          buf,
+          subStart,
+          subEnd,
+          metrics,
+        );
         if (subResult.rawTag1 !== undefined) {
           rawTag1 = subResult.rawTag1;
         }
@@ -230,7 +235,9 @@ function parseField1Submessage(
       } else if (fieldNum === 20) {
         // Tag 20: Key-value string tuples (e.g. model_enum: MODEL_PLACEHOLDER_M318)
         try {
-          const str = new TextDecoder("latin1").decode(buf.subarray(subStart, subEnd));
+          const str = new TextDecoder("latin1").decode(
+            buf.subarray(subStart, subEnd),
+          );
           if (!metrics.modelEnumRaw) {
             const enumMatch = str.match(/model_enum[^\w]*(MODEL_[A-Z0-9_]+)/i);
             if (enumMatch && enumMatch[1]) {
@@ -316,7 +323,12 @@ export function parseGenMetadataProtobuf(
           }
         } else if (fieldNum === 9) {
           // Direct token accounting submessage (observed in step metadata)
-          const subResult = parseTokenAccountingSubmessage(buf, subStart, subEnd, result);
+          const subResult = parseTokenAccountingSubmessage(
+            buf,
+            subStart,
+            subEnd,
+            result,
+          );
           if (subResult.rawTag1 !== undefined) {
             rawTag1 = subResult.rawTag1;
           }
@@ -338,7 +350,10 @@ export function parseGenMetadataProtobuf(
     result.usedTokens = result.cachedTokens + result.freshInputTokens;
 
     // Consistency check: if thinkingTokens + outputTokens exist but completionTokens is 0
-    if (result.completionTokens === 0 && (result.thinkingTokens > 0 || result.outputTokens > 0)) {
+    if (
+      result.completionTokens === 0 &&
+      (result.thinkingTokens > 0 || result.outputTokens > 0)
+    ) {
       result.completionTokens = result.thinkingTokens + result.outputTokens;
     }
 
@@ -422,7 +437,12 @@ export function parseStepMetadataProtobuf(
         pos = subEnd;
 
         if (fieldNum === 9) {
-          const subResult = parseTokenAccountingSubmessage(buf, subStart, subEnd, result);
+          const subResult = parseTokenAccountingSubmessage(
+            buf,
+            subStart,
+            subEnd,
+            result,
+          );
           if (subResult.rawTag1 !== undefined) {
             rawTag1 = subResult.rawTag1;
           }
@@ -437,6 +457,15 @@ export function parseStepMetadataProtobuf(
             result.modelEnumRaw = "MODEL_PLACEHOLDER_M26";
           } else if (val === 1318 || val === 318) {
             result.modelEnumRaw = "MODEL_PLACEHOLDER_M318";
+          } else if (
+            (val >= 1400 && val <= 1403) ||
+            (val >= 400 && val <= 403)
+          ) {
+            result.modelEnumRaw = `MODEL_PLACEHOLDER_M${val >= 1000 ? val - 1000 : val}`;
+          } else if (val >= 1408 && val <= 1421) {
+            result.modelEnumRaw = `MODEL_PLACEHOLDER_M${val - 1000}`;
+          } else if (val >= 408 && val <= 421) {
+            result.modelEnumRaw = `MODEL_PLACEHOLDER_M${val}`;
           } else if (val === 29) {
             result.modelEnumRaw = "MODEL_PLACEHOLDER_M29";
           } else if (val === 34) {
@@ -454,7 +483,10 @@ export function parseStepMetadataProtobuf(
 
     result.usedTokens = result.cachedTokens + result.freshInputTokens;
 
-    if (result.completionTokens === 0 && (result.thinkingTokens > 0 || result.outputTokens > 0)) {
+    if (
+      result.completionTokens === 0 &&
+      (result.thinkingTokens > 0 || result.outputTokens > 0)
+    ) {
       result.completionTokens = result.thinkingTokens + result.outputTokens;
     }
 

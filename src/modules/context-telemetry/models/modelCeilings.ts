@@ -15,7 +15,42 @@ export interface ModelCeilingInfo {
   isAuthoritative: boolean;
 }
 
+const OPUS_55_TIERS = [
+  ["high", " (High)", /(?:claude-(?:opus-5-5|5-5-opus)-high)/i],
+  [
+    "medium",
+    " (Medium)",
+    /(?:claude-(?:opus-5-5|5-5-opus)-medium|MODEL_PLACEHOLDER_M401)/i,
+  ],
+  [
+    "low",
+    " (Low)",
+    /(?:claude-(?:opus-5-5|5-5-opus)-low|MODEL_PLACEHOLDER_M400)/i,
+  ],
+  [
+    "max",
+    " (Max)",
+    /(?:claude-(?:opus-5-5|5-5-opus)-max|MODEL_PLACEHOLDER_M402)/i,
+  ],
+  ["thinking", " (Thinking)", /(?:claude-(?:opus-5-5|5-5-opus)-thinking)/i],
+  ["", "", /(?:claude-(?:opus-5-5|5-5-opus)|MODEL_PLACEHOLDER_M40[0-3])/i],
+] as const;
+
+const ARGON_TIERS = [
+  ["high", " (High)", /(?:gemini-4-argon-high)/i],
+  ["medium", " (Medium)", /(?:gemini-4-argon-medium|MODEL_PLACEHOLDER_M418)/i],
+  ["low", " (Low)", /(?:gemini-4-argon-low)/i],
+  ["", "", /(?:gemini-4-argon|MODEL_PLACEHOLDER_M4(?:0[89]|1[0-79]|2[01]))/i],
+] as const;
+
 export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
+  ...OPUS_55_TIERS.map(([suffix, label, pattern]) => ({
+    id: suffix ? `claude-5.5-opus-${suffix}` : "claude-5.5-opus",
+    displayName: `Claude 5.5 Opus${label}`,
+    pattern,
+    maxTokens: 840_000,
+    isAuthoritative: true,
+  })),
   // Claude 4.6 Opus (Thinking)
   {
     id: "claude-4.6-opus-thinking",
@@ -58,6 +93,13 @@ export const KNOWN_MODEL_CEILINGS: ModelCeilingDefinition[] = [
     maxTokens: 160_000,
     isAuthoritative: true,
   },
+  ...ARGON_TIERS.map(([suffix, label, pattern]) => ({
+    id: suffix ? `gemini-4-argon-${suffix}` : "gemini-4-argon",
+    displayName: `Gemini 4 Argon${label}`,
+    pattern,
+    maxTokens: 256_000,
+    isAuthoritative: true,
+  })),
   // Gemini 3.8 Flash (High)
   {
     id: "gemini-3.8-flash-high",
@@ -133,24 +175,30 @@ export function resolveModelContextWindow(rawModel?: string): ModelCeilingInfo {
   if (CLAUDE_BOUNDARY_REGEX.test(trimmed)) {
     const cleaned = trimmed.replace(/^models\//i, "");
     const dynamicMatch = cleaned.match(
-      /^claude-(sonnet|opus|haiku)-(\d+)-(\d+)(?:-(thinking))?$/i,
+      /^claude-(sonnet|opus|haiku)-(\d+)-(\d+)(?:-(thinking|low|medium|high|max))?$/i,
     );
     let displayName = "Claude (Dynamic)";
     if (dynamicMatch) {
-      const [, rawVariant, major, minor, thinking] = dynamicMatch;
+      const [, rawVariant, major, minor, rawSuffix] = dynamicMatch;
       const variant =
         rawVariant.charAt(0).toUpperCase() + rawVariant.slice(1).toLowerCase();
-      displayName = `Claude ${major}.${minor} ${variant}${thinking ? " (Thinking)" : ""}`;
+      const suffix = rawSuffix
+        ? ` (${rawSuffix.charAt(0).toUpperCase() + rawSuffix.slice(1).toLowerCase()})`
+        : "";
+      displayName = `Claude ${major}.${minor} ${variant}${suffix}`;
     } else {
       const legacyMatch = cleaned.match(
-        /^claude-(\d+)-(\d+)-(sonnet|opus|haiku)(?:-(thinking))?$/i,
+        /^claude-(\d+)-(\d+)-(sonnet|opus|haiku)(?:-(thinking|low|medium|high|max))?$/i,
       );
       if (legacyMatch) {
-        const [, major, minor, rawVariant, thinking] = legacyMatch;
+        const [, major, minor, rawVariant, rawSuffix] = legacyMatch;
         const variant =
           rawVariant.charAt(0).toUpperCase() +
           rawVariant.slice(1).toLowerCase();
-        displayName = `Claude ${major}.${minor} ${variant}${thinking ? " (Thinking)" : ""}`;
+        const suffix = rawSuffix
+          ? ` (${rawSuffix.charAt(0).toUpperCase() + rawSuffix.slice(1).toLowerCase()})`
+          : "";
+        displayName = `Claude ${major}.${minor} ${variant}${suffix}`;
       }
     }
 

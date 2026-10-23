@@ -24,7 +24,9 @@ describe("modelCeilings (Context Ceiling Mapping & Pressure Bounds)", () => {
     });
 
     it("maps Claude 4.6 Sonnet (Thinking) and 3.7 Sonnet to exact displayName and 160,000 tokens", () => {
-      const sonnet46Thinking = resolveModelContextWindow("claude-sonnet-4-6-thinking");
+      const sonnet46Thinking = resolveModelContextWindow(
+        "claude-sonnet-4-6-thinking",
+      );
       expect(sonnet46Thinking.displayName).toBe("Claude 4.6 Sonnet (Thinking)");
       expect(sonnet46Thinking.maxTokens).toBe(160_000);
       expect(sonnet46Thinking.isAuthoritative).toBe(true);
@@ -136,13 +138,15 @@ describe("modelCeilings (Context Ceiling Mapping & Pressure Bounds)", () => {
 
     it("resolves dynamic and uncataloged Claude models to authoritative 160,000 tokens", () => {
       // Uncataloged dynamic pattern model
-      const opus55 = resolveModelContextWindow("claude-opus-5-5");
-      expect(opus55.displayName).toBe("Claude 5.5 Opus");
-      expect(opus55.maxTokens).toBe(160_000);
-      expect(opus55.isAuthoritative).toBe(true);
+      const uncatalogedOpus = resolveModelContextWindow("claude-opus-4-7");
+      expect(uncatalogedOpus.displayName).toBe("Claude 4.7 Opus");
+      expect(uncatalogedOpus.maxTokens).toBe(160_000);
+      expect(uncatalogedOpus.isAuthoritative).toBe(true);
 
       // Uncataloged dynamic thinking model
-      const haiku45Thinking = resolveModelContextWindow("claude-haiku-4-5-thinking");
+      const haiku45Thinking = resolveModelContextWindow(
+        "claude-haiku-4-5-thinking",
+      );
       expect(haiku45Thinking.displayName).toBe("Claude 4.5 Haiku (Thinking)");
       expect(haiku45Thinking.maxTokens).toBe(160_000);
       expect(haiku45Thinking.isAuthoritative).toBe(true);
@@ -154,8 +158,12 @@ describe("modelCeilings (Context Ceiling Mapping & Pressure Bounds)", () => {
       expect(prefixed.isAuthoritative).toBe(true);
 
       // Legacy pattern in boundary fallback (both with and without thinking)
-      const legacyDynamicThinking = resolveModelContextWindow("claude-4-0-sonnet-thinking");
-      expect(legacyDynamicThinking.displayName).toBe("Claude 4.0 Sonnet (Thinking)");
+      const legacyDynamicThinking = resolveModelContextWindow(
+        "claude-4-0-sonnet-thinking",
+      );
+      expect(legacyDynamicThinking.displayName).toBe(
+        "Claude 4.0 Sonnet (Thinking)",
+      );
       expect(legacyDynamicThinking.maxTokens).toBe(160_000);
       expect(legacyDynamicThinking.isAuthoritative).toBe(true);
 
@@ -300,17 +308,27 @@ describe("modelCeilings (Context Ceiling Mapping & Pressure Bounds)", () => {
 
       // Critical compaction threshold: 230,400+ tokens on 256,000 window evaluates to >= 90.0%
       const criticalTokens = 230_400;
-      const criticalRatio = Number(((criticalTokens / trueCeiling) * 100).toFixed(1));
+      const criticalRatio = Number(
+        ((criticalTokens / trueCeiling) * 100).toFixed(1),
+      );
       expect(criticalRatio).toBe(90.0);
       expect(calculatePressureState(criticalRatio)).toBe("critical_risk");
 
       // Direct 2-arg calculation: calculatePressureState(usedTokens, maxTokens)
-      expect(calculatePressureState(criticalTokens, trueCeiling)).toBe("critical_risk");
-      expect(calculatePressureState(231_000, trueCeiling)).toBe("critical_risk");
-      expect(calculatePressureState(usedTokens, trueCeiling)).toBe("high_pressure");
+      expect(calculatePressureState(criticalTokens, trueCeiling)).toBe(
+        "critical_risk",
+      );
+      expect(calculatePressureState(231_000, trueCeiling)).toBe(
+        "critical_risk",
+      );
+      expect(calculatePressureState(usedTokens, trueCeiling)).toBe(
+        "high_pressure",
+      );
 
       // System does NOT report 'normal' or evaluate against 1,000,000 API brochure ceiling
-      const misleadingRatioOld = Number(((usedTokens / oldCeiling) * 100).toFixed(1));
+      const misleadingRatioOld = Number(
+        ((usedTokens / oldCeiling) * 100).toFixed(1),
+      );
       expect(misleadingRatioOld).toBe(23.0);
       expect(calculatePressureState(misleadingRatioOld)).toBe("normal");
       expect(calculatePressureState(usedTokens, oldCeiling)).toBe("normal");
