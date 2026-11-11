@@ -15,6 +15,7 @@ import {
   CloudAccount,
   CloudAccountExportSchema,
   type AutoSwitchModelConfig,
+  type CloudQuotaData,
 } from "@/modules/cloud-account/types";
 import { logger } from "@/shared/logging/logger";
 import { normalizeTrustedGoogleValidationUrl } from "@/modules/cloud-account/utils/google-validation-url";
@@ -76,6 +77,16 @@ import {
   isRetryableInvalidGrantRefreshError,
 } from "@/modules/cloud-account/services/CloudAccountRefreshService";
 import { clearValidationHealthAfterSuccessfulProbe } from "@/modules/cloud-account/services/CloudAccountHealthService";
+import { applyImageQuotaMarks } from "@/modules/cloud-account/utils/image-quota-exhaustion";
+
+/** Keeps a freshly refreshed account consistent with what getAccounts returns. */
+function withImageQuotaMarks(accountId: string, quota: CloudQuotaData) {
+  return applyImageQuotaMarks(
+    quota,
+    CloudAccountSettingsStore.getImageQuotaMarks()[accountId],
+    Date.now(),
+  );
+}
 
 // Helper to update tray
 function notifyTrayUpdate(account: CloudAccount) {
@@ -688,8 +699,8 @@ export async function refreshAccountQuota(
       }
     }
 
-    account.quota = quota;
-    await CloudAccountRepo.updateQuota(account.id, account.quota);
+    await CloudAccountRepo.updateQuota(account.id, quota);
+    account.quota = withImageQuotaMarks(account.id, quota);
     await CloudAccountRepo.updateLastUsed(account.id);
     account.last_used = Math.floor(Date.now() / 1000);
     await clearAccountStatus(account);
@@ -741,8 +752,8 @@ export async function refreshAccountQuota(
           }
         }
 
-        account.quota = quota;
-        await CloudAccountRepo.updateQuota(account.id, account.quota);
+        await CloudAccountRepo.updateQuota(account.id, quota);
+        account.quota = withImageQuotaMarks(account.id, quota);
         await CloudAccountRepo.updateLastUsed(account.id);
         account.last_used = Math.floor(Date.now() / 1000);
         await clearAccountStatus(account);

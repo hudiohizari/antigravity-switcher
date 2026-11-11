@@ -16,6 +16,7 @@ import {
 } from "./CloudAccountRefreshService";
 import { clearValidationHealthAfterSuccessfulProbe } from "./CloudAccountHealthService";
 import { AutoSwitchService } from "./AutoSwitchService";
+import { ImageQuotaExhaustionDetector } from "./ImageQuotaExhaustionDetector";
 import { logger } from "@/shared/logging/logger";
 import { classifyAccountStatusFromError } from "@/modules/cloud-account/utils/account-status";
 import type { CloudAccount } from "@/modules/cloud-account/types";
@@ -410,6 +411,11 @@ export class CloudMonitorService {
     const epoch = this.stopEpoch;
     const refreshedAccounts: CloudAccount[] = [];
     logger.info("CloudMonitor: Polling quotas...");
+    try {
+      await ImageQuotaExhaustionDetector.scan();
+    } catch (error) {
+      logger.warn("CloudMonitor: Image quota scan failed", error);
+    }
     const allAccounts = await CloudAccountRepo.getAccounts();
     let now = Math.floor(Date.now() / 1000);
 

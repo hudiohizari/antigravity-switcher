@@ -8,8 +8,14 @@ import { isAntigravityTargetInstalled } from "@/shared/platform/paths";
 import { logger } from "@/shared/logging/logger";
 import { settings } from "@/shared/persistence/database/schema";
 import { getCloudDb } from "./cloud-account-db";
+import {
+  type ImageQuotaMarks,
+  ImageQuotaMarksSchema,
+} from "@/modules/cloud-account/utils/image-quota-exhaustion";
 
 const ACTIVE_ACCOUNT_SETTING_PREFIX = "active_cloud_account";
+const ACTIVE_SINCE_SETTING_PREFIX = "active_cloud_account_since";
+const IMAGE_QUOTA_MARKS_SETTING_KEY = "image_quota_exhaustion";
 const UNIFIED_MODE_SETTING_KEY = "unified_mode";
 const StringSettingSchema = z.string();
 const BooleanSettingSchema = z.boolean();
@@ -98,6 +104,9 @@ export class CloudAccountSettingsStore {
     id: string,
   ): void {
     const normalizedTarget = resolveAntigravityAppTarget(target);
+    if (this.getActiveAccountIdForTarget(normalizedTarget) !== id) {
+      this.setActiveSince(normalizedTarget, Date.now());
+    }
     this.setSetting(`${ACTIVE_ACCOUNT_SETTING_PREFIX}.${normalizedTarget}`, id);
 
     // Dual-write during transition
@@ -106,6 +115,37 @@ export class CloudAccountSettingsStore {
     } else if (normalizedTarget === "cli") {
       this.setSetting(`${ACTIVE_ACCOUNT_SETTING_PREFIX}.agy`, id);
     }
+  }
+
+  /** When the target's current active account was set (epoch ms); undefined if unknown. */
+  static getActiveSince(
+    target: AntigravityAppTarget | string | undefined,
+  ): number | undefined {
+    const key = `${ACTIVE_SINCE_SETTING_PREFIX}.${resolveAntigravityAppTarget(target)}`;
+    const value = this.getSetting(key, 0, z.number());
+    return value > 0 ? value : undefined;
+  }
+
+  static setActiveSince(
+    target: AntigravityAppTarget | string | undefined,
+    timestampMs: number,
+  ): void {
+    this.setSetting(
+      `${ACTIVE_SINCE_SETTING_PREFIX}.${resolveAntigravityAppTarget(target)}`,
+      timestampMs,
+    );
+  }
+
+  static getImageQuotaMarks(): ImageQuotaMarks {
+    return this.getSetting(
+      IMAGE_QUOTA_MARKS_SETTING_KEY,
+      {},
+      ImageQuotaMarksSchema,
+    );
+  }
+
+  static setImageQuotaMarks(marks: ImageQuotaMarks): void {
+    this.setSetting(IMAGE_QUOTA_MARKS_SETTING_KEY, marks);
   }
 
   static getActiveAccountIdForTarget(

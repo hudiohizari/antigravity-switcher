@@ -22,6 +22,7 @@ import { accounts } from "@/shared/persistence/database/schema";
 import { type DrizzleExecutor, getCloudDb } from "./cloud-account-db";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import { CloudAccountSettingsStore } from "./cloud-account-settings-store";
+import { applyImageQuotaMarks } from "@/modules/cloud-account/utils/image-quota-exhaustion";
 import {
   parseDeviceHistoryColumn,
   parseDeviceProfileColumn,
@@ -334,6 +335,7 @@ export class CloudAccountRepo {
 
   static async getAccounts(): Promise<CloudAccount[]> {
     await this.ensureInitialized();
+    const imageQuotaMarks = CloudAccountSettingsStore.getImageQuotaMarks();
     const { raw, orm } = getCloudDb();
     const migrationStats = createMigrationStats();
     let tokenCandidates = 0;
@@ -485,7 +487,11 @@ export class CloudAccountRepo {
             name: normalizedRow.name ?? undefined,
             avatar_url: normalizedRow.avatarUrl ?? undefined,
             token: parseCloudToken(normalizedRow.id, tokenResult.value),
-            quota: parseCloudQuota(normalizedRow.id, quotaResult.value),
+            quota: applyImageQuotaMarks(
+              parseCloudQuota(normalizedRow.id, quotaResult.value),
+              imageQuotaMarks[normalizedRow.id],
+              Date.now(),
+            ),
             health: parseCloudHealth(normalizedRow.id, healthResult.value),
             device_profile: parseDeviceProfileColumn(
               normalizedRow.deviceProfileJson,
@@ -564,6 +570,7 @@ export class CloudAccountRepo {
 
   static async getAccount(id: string): Promise<CloudAccount | undefined> {
     await this.ensureInitialized();
+    const imageQuotaMarks = CloudAccountSettingsStore.getImageQuotaMarks();
     const { raw, orm } = getCloudDb();
 
     try {
@@ -618,7 +625,11 @@ export class CloudAccountRepo {
       }
 
       const parsedToken = parseCloudToken(normalizedRow.id, tokenValue);
-      const parsedQuota = parseCloudQuota(normalizedRow.id, quotaResult.value);
+      const parsedQuota = applyImageQuotaMarks(
+        parseCloudQuota(normalizedRow.id, quotaResult.value),
+        imageQuotaMarks[normalizedRow.id],
+        Date.now(),
+      );
 
       return {
         id: normalizedRow.id,
