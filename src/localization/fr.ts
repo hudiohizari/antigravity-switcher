@@ -1037,6 +1037,10 @@ const fr = {
         "Identifiants mis a jour: redemarrage de {{restartedTargets}}, mise a jour sur le disque pour {{injectedTargets}}.",
     },
     card: {
+      preferredAdd: "Marquer comme préféré",
+      preferredRemove: "Retirer des préférés",
+      preferredHint:
+        "Le changement automatique utilise d'abord les comptes préférés, puis les autres.",
       active: "Actif",
       use: "Utiliser",
       rateLimited: "Limite par le debit",

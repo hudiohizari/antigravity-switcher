@@ -75,6 +75,7 @@ import {
 } from "@/modules/cloud-account/utils/quota-groups";
 import { WeeklyQuotaDisplay } from "@/modules/cloud-account/components/WeeklyQuotaDisplay";
 import { DetailedQuotaDisplay } from "@/modules/cloud-account/components/DetailedQuotaDisplay";
+import { PreferredAccountToggle } from "@/modules/cloud-account/components/PreferredAccountToggle";
 import {
   QUOTA_TEXT_COLOR_CLASS_BY_STATUS,
   QUOTA_BAR_COLOR_CLASS_BY_STATUS,
@@ -528,79 +529,82 @@ export function CloudAccountCard({
           )}
         </div>
 
-        {allModelEntries.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="hover:bg-muted h-8 w-8 cursor-pointer rounded-full"
+        <div className="flex shrink-0 items-center gap-1">
+          <PreferredAccountToggle accountId={account.id} />
+          {allModelEntries.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hover:bg-muted h-8 w-8 cursor-pointer rounded-full"
+                >
+                  {(() => {
+                    const hiddenCount = allModelEntries.filter(
+                      ([modelName]) =>
+                        config?.model_visibility?.[modelName] === false,
+                    ).length;
+                    return hiddenCount > 0 ? (
+                      <EyeOff className="text-muted-foreground h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    );
+                  })()}
+                  <span className="sr-only">
+                    {t("cloud.card.modelVisibility")}
+                  </span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-64 max-w-[calc(100vw-2rem)]"
+                align="end"
               >
-                {(() => {
-                  const hiddenCount = allModelEntries.filter(
-                    ([modelName]) =>
-                      config?.model_visibility?.[modelName] === false,
-                  ).length;
-                  return hiddenCount > 0 ? (
-                    <EyeOff className="text-muted-foreground h-4 w-4" />
-                  ) : (
-                    <Eye className="h-4 w-4" />
-                  );
-                })()}
-                <span className="sr-only">
+                <DropdownMenuLabel>
                   {t("cloud.card.modelVisibility")}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="w-64 max-w-[calc(100vw-2rem)]"
-              align="end"
-            >
-              <DropdownMenuLabel>
-                {t("cloud.card.modelVisibility")}
-              </DropdownMenuLabel>
-              <div className="max-h-64 overflow-auto px-2 py-1">
-                {allModelEntries.map(([modelName, info]) => {
-                  const isVisible =
-                    config?.model_visibility?.[modelName] !== false;
-                  const modelDisplayName = formatModelDisplayName(
-                    modelName,
-                    info?.display_name,
-                  );
-                  return (
-                    <DropdownMenuItem
-                      key={modelName}
-                      onSelect={(e) => e.preventDefault()}
-                      className="flex cursor-pointer items-center gap-2 min-w-0"
-                    >
-                      <Checkbox
-                        checked={isVisible}
-                        onCheckedChange={(checked) => {
-                          if (config) {
-                            const newVisibility = {
-                              ...config.model_visibility,
-                            };
-                            newVisibility[modelName] = checked as boolean;
-                            saveConfig({
-                              ...config,
-                              model_visibility: newVisibility,
-                            });
-                          }
-                        }}
-                      />
-                      <span
-                        className="min-w-0 flex-1 truncate text-xs"
-                        title={modelDisplayName}
+                </DropdownMenuLabel>
+                <div className="max-h-64 overflow-auto px-2 py-1">
+                  {allModelEntries.map(([modelName, info]) => {
+                    const isVisible =
+                      config?.model_visibility?.[modelName] !== false;
+                    const modelDisplayName = formatModelDisplayName(
+                      modelName,
+                      info?.display_name,
+                    );
+                    return (
+                      <DropdownMenuItem
+                        key={modelName}
+                        onSelect={(e) => e.preventDefault()}
+                        className="flex cursor-pointer items-center gap-2 min-w-0"
                       >
-                        {modelDisplayName}
-                      </span>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+                        <Checkbox
+                          checked={isVisible}
+                          onCheckedChange={(checked) => {
+                            if (config) {
+                              const newVisibility = {
+                                ...config.model_visibility,
+                              };
+                              newVisibility[modelName] = checked as boolean;
+                              saveConfig({
+                                ...config,
+                                model_visibility: newVisibility,
+                              });
+                            }
+                          }}
+                        />
+                        <span
+                          className="min-w-0 flex-1 truncate text-xs"
+                          title={modelDisplayName}
+                        >
+                          {modelDisplayName}
+                        </span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </CardHeader>
 
       <CardContent className="flex-1 pb-4">
@@ -1076,6 +1080,7 @@ export function CompactCloudAccountCard({
             unknownLabel={t("cloud.tierFilter.unknown")}
             className="h-4 max-w-24 px-1 text-[9px]"
           />
+          <PreferredAccountToggle accountId={account.id} className="h-6 w-6" />
         </div>
 
         <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-1.5 text-xs">

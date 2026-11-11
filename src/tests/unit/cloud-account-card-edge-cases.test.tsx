@@ -33,6 +33,8 @@ vi.mock("@/modules/cloud-account/hooks/useProviderGrouping", () => ({
 }));
 
 vi.mock("@/modules/cloud-account/hooks/useCloudAccounts", () => ({
+  usePreferredAccountIds: () => ({ data: [] }),
+  useSetAccountPreferred: () => ({ mutate: vi.fn(), isPending: false }),
   useSetAccountProxy: () => ({
     mutate: vi.fn(),
   }),

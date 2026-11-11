@@ -14,6 +14,7 @@ vi.mock(
     CloudAccountSettingsStore: {
       getSetting: vi.fn(),
       getActiveAccountIdForTarget: vi.fn(),
+      getPreferredAccountIds: vi.fn((): string[] => []),
       isUnifiedMode: vi.fn(() => true),
       setUnifiedMode: vi.fn(),
       getOperationalState: vi.fn(),

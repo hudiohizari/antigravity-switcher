@@ -20,6 +20,8 @@ import {
   setAutoSwitchEnabled,
   getAutoSwitchModelsConfig,
   setAutoSwitchModelsConfig,
+  getPreferredAccountIds,
+  setAccountPreferred,
   forcePollCloudMonitor,
   startAuthFlow,
   listOAuthClients,
@@ -353,6 +355,17 @@ export const cloudRouter = os.router({
     .output(z.void())
     .handler(async ({ input }) => {
       setAutoSwitchModelsConfig(input);
+    }),
+
+  getPreferredAccountIds: os.output(z.array(z.string())).handler(async () => {
+    return getPreferredAccountIds();
+  }),
+
+  setAccountPreferred: os
+    .input(z.object({ accountId: z.string(), preferred: z.boolean() }))
+    .output(z.array(z.string()))
+    .handler(async ({ input }) => {
+      return setAccountPreferred(input.accountId, input.preferred);
     }),
 
   getWeeklyWarmupConfig: os

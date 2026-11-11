@@ -1085,6 +1085,10 @@ const id = {
         "Kredensial diperbarui: memulai ulang {{restartedTargets}}, diperbarui pada disk untuk {{injectedTargets}}.",
     },
     card: {
+      preferredAdd: "Tandai sebagai prioritas",
+      preferredRemove: "Hapus dari prioritas",
+      preferredHint:
+        "Auto-switch memakai akun prioritas dulu, lalu sisanya.",
       active: "Aktif",
       use: "Gunakan",
       rateLimited: "Batas Laju Tercapai",

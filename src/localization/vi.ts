@@ -1079,6 +1079,10 @@ const vi = {
         "Đã cập nhật thông tin xác thực: khởi động lại {{restartedTargets}}, cập nhật trên đĩa cho {{injectedTargets}}.",
     },
     card: {
+      preferredAdd: "Đánh dấu ưu tiên",
+      preferredRemove: "Bỏ ưu tiên",
+      preferredHint:
+        "Tự động chuyển dùng tài khoản ưu tiên trước, rồi đến các tài khoản còn lại.",
       active: "Đang hoạt động",
       use: "Sử dụng",
       rateLimited: "Bị giới hạn tốc độ",

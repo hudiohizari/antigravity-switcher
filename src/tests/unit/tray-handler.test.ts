@@ -94,6 +94,7 @@ vi.mock(
     CloudAccountSettingsStore: {
       getSetting: vi.fn(() => ({})),
       getActiveAccountIdForTarget: vi.fn(),
+      getPreferredAccountIds: vi.fn((): string[] => []),
     },
   }),
 );

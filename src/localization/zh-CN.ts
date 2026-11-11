@@ -982,6 +982,10 @@ const zhCn = {
         "凭据已更新: 已重启 {{restartedTargets}}，已更新磁盘凭据 {{injectedTargets}}。",
     },
     card: {
+      preferredAdd: "设为首选",
+      preferredRemove: "取消首选",
+      preferredHint:
+        "自动切换会先使用首选账号，再使用其他账号。",
       active: "活跃",
       use: "使用",
       rateLimited: "受限",

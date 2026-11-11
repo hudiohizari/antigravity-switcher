@@ -16,6 +16,7 @@ import {
 const ACTIVE_ACCOUNT_SETTING_PREFIX = "active_cloud_account";
 const ACTIVE_SINCE_SETTING_PREFIX = "active_cloud_account_since";
 const IMAGE_QUOTA_MARKS_SETTING_KEY = "image_quota_exhaustion";
+const PREFERRED_ACCOUNTS_SETTING_KEY = "preferred_account_ids";
 const UNIFIED_MODE_SETTING_KEY = "unified_mode";
 const StringSettingSchema = z.string();
 const BooleanSettingSchema = z.boolean();
@@ -146,6 +147,24 @@ export class CloudAccountSettingsStore {
 
   static setImageQuotaMarks(marks: ImageQuotaMarks): void {
     this.setSetting(IMAGE_QUOTA_MARKS_SETTING_KEY, marks);
+  }
+
+  /** Accounts auto-switch tries first when picking the next account. */
+  static getPreferredAccountIds(): string[] {
+    return this.getSetting(
+      PREFERRED_ACCOUNTS_SETTING_KEY,
+      [],
+      z.array(z.string()),
+    );
+  }
+
+  static setAccountPreferred(accountId: string, preferred: boolean): string[] {
+    const others = this.getPreferredAccountIds().filter(
+      (id) => id !== accountId,
+    );
+    const next = preferred ? [...others, accountId] : others;
+    this.setSetting(PREFERRED_ACCOUNTS_SETTING_KEY, next);
+    return next;
   }
 
   static getActiveAccountIdForTarget(

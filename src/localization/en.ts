@@ -1069,6 +1069,10 @@ const en = {
         "Credentials updated: restarted {{restartedTargets}}, updated on disk for {{injectedTargets}}.",
     },
     card: {
+      preferredAdd: "Mark as preferred",
+      preferredRemove: "Remove from preferred",
+      preferredHint:
+        "Auto-switch uses preferred accounts first, then the rest.",
       active: "Active",
       use: "Use",
       rateLimited: "Rate Limited",

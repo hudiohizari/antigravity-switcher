@@ -240,7 +240,8 @@ export class AutoSwitchService {
    * 1. Not the current account.
    * 2. Status is 'active' (not rate_limited or expired).
    * 3. Has quota >= 5% in the best available model of every enabled quota group.
-   * 4. Ranked by highest remaining 5h limit (bottleneck), then average 5h, then fallback.
+   * 4. Preferred accounts first; within each group, ranked by highest remaining
+   *    5h limit (bottleneck), then average 5h, then fallback.
    */
   static async findBestAccount(
     currentAccountId: string,
@@ -265,7 +266,11 @@ export class AutoSwitchService {
 
     if (candidates.length === 0) return null;
 
-    return this.sortCandidates(candidates, config)[0];
+    const sorted = this.sortCandidates(candidates, config);
+    const preferredIds = new Set(
+      CloudAccountSettingsStore.getPreferredAccountIds(),
+    );
+    return sorted.find((acc) => preferredIds.has(acc.id)) ?? sorted[0];
   }
 
   private static getModelConfig(

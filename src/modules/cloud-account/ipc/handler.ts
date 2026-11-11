@@ -1427,6 +1427,17 @@ export function setAutoSwitchModelsConfig(
   CloudAccountSettingsStore.setSetting("auto_switch_models", config);
 }
 
+export function getPreferredAccountIds(): string[] {
+  return CloudAccountSettingsStore.getPreferredAccountIds();
+}
+
+export function setAccountPreferred(
+  accountId: string,
+  preferred: boolean,
+): string[] {
+  return CloudAccountSettingsStore.setAccountPreferred(accountId, preferred);
+}
+
 export async function forcePollCloudMonitor(): Promise<void> {
   const { CloudMonitorService } =
     await import("@/modules/cloud-account/services/CloudMonitorService");

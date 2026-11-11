@@ -18,6 +18,7 @@ vi.mock(
     CloudAccountSettingsStore: {
       getSetting: vi.fn(),
       getActiveAccountIdForTarget: vi.fn(),
+      getPreferredAccountIds: vi.fn((): string[] => []),
       isUnifiedMode: vi.fn(() => false),
       setUnifiedMode: vi.fn(),
       getOperationalState: vi.fn(),
@@ -381,6 +382,79 @@ describe("AutoSwitchService", () => {
 
     const best = await AutoSwitchService.findBestAccount("current");
     expect(best?.id).toBe("acc-85pct-5h");
+  });
+
+  describe("preferred accounts", () => {
+    async function setup(preferredIds: string[], accounts: CloudAccount[]) {
+      const { CloudAccountRepo } =
+        await import("@/modules/cloud-account/persistence/cloudHandler");
+      const { CloudAccountSettingsStore } =
+        await import("@/modules/cloud-account/persistence/cloud-account-settings-store");
+      const { AutoSwitchService } =
+        await import("@/modules/cloud-account/services/AutoSwitchService");
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+      vi.mocked(
+        CloudAccountSettingsStore.getPreferredAccountIds,
+      ).mockReturnValue(preferredIds);
+      vi.mocked(CloudAccountRepo.getAccounts).mockResolvedValue(accounts);
+      return AutoSwitchService;
+    }
+
+    it("picks a usable preferred account over a regular one with more quota", async () => {
+      const service = await setup(
+        ["pref-a", "pref-b"],
+        [
+          createAccount("current", quotaWithClaudeGroup(2, 0.02)),
+          createAccount("regular", quotaWithClaudeGroup(95, 0.95)),
+          createAccount("pref-a", quotaWithClaudeGroup(30, 0.3)),
+          createAccount("pref-b", quotaWithClaudeGroup(60, 0.6)),
+        ],
+      );
+      expect((await service.findBestAccount("current"))?.id).toBe("pref-b");
+    });
+
+    it("falls back to regular accounts when every preferred one is depleted or unusable", async () => {
+      const service = await setup(
+        ["pref-dry", "pref-limited", "current"],
+        [
+          createAccount("current", quotaWithClaudeGroup(2, 0.02)),
+          createAccount("pref-dry", quotaWithClaudeGroup(1, 0.01)),
+          createAccount("pref-limited", quotaWithClaudeGroup(90, 0.9), {
+            status: "rate_limited",
+          }),
+          createAccount("regular-low", quotaWithClaudeGroup(40, 0.4)),
+          createAccount("regular-high", quotaWithClaudeGroup(70, 0.7)),
+        ],
+      );
+      expect((await service.findBestAccount("current"))?.id).toBe(
+        "regular-high",
+      );
+    });
+
+    it("returns to a refreshed preferred account when leaving a regular one", async () => {
+      const service = await setup(
+        ["pref-refreshed"],
+        [
+          createAccount("current-regular", quotaWithClaudeGroup(3, 0.03)),
+          createAccount("regular-high", quotaWithClaudeGroup(99, 0.99)),
+          createAccount("pref-refreshed", quotaWithClaudeGroup(100, 1)),
+        ],
+      );
+      expect((await service.findBestAccount("current-regular"))?.id).toBe(
+        "pref-refreshed",
+      );
+    });
+
+    it("ignores preferred ids for accounts that no longer exist", async () => {
+      const service = await setup(
+        ["deleted-account"],
+        [
+          createAccount("current", quotaWithClaudeGroup(2, 0.02)),
+          createAccount("regular", quotaWithClaudeGroup(80, 0.8)),
+        ],
+      );
+      expect((await service.findBestAccount("current"))?.id).toBe("regular");
+    });
   });
 
   it("prefers an account with balanced multi-group 5h quota over an account with one depleted group", async () => {

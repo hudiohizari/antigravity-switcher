@@ -72,6 +72,8 @@ vi.mock("@/modules/cloud-account/components/CloudAccountToolbar", () => ({
 }));
 
 vi.mock("@/modules/cloud-account/hooks/useCloudAccounts", () => ({
+  usePreferredAccountIds: () => ({ data: [] }),
+  useSetAccountPreferred: () => ({ mutate: vi.fn(), isPending: false }),
   useWeeklyWarmupConfig: () => ({ data: undefined }),
   useCloudAccounts: () => ({
     data: [],

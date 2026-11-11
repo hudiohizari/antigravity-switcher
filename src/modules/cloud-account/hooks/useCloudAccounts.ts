@@ -19,6 +19,8 @@ import {
   setAutoSwitchEnabled,
   getAutoSwitchModelsConfig,
   setAutoSwitchModelsConfig,
+  getPreferredAccountIds,
+  setAccountPreferred,
   forcePollCloudMonitor,
   getWeeklyWarmupConfig,
   setWeeklyWarmupConfig,
@@ -200,6 +202,26 @@ export function useSetAutoSwitchModelsConfig() {
     mutationFn: setAutoSwitchModelsConfig,
     onSuccess: (_, variables) => {
       queryClient.setQueryData(AUTO_SWITCH_MODELS_KEY, variables);
+    },
+  });
+}
+
+export const PREFERRED_ACCOUNTS_KEY = ["preferredAccountIds"];
+
+export function usePreferredAccountIds() {
+  return useQuery<string[]>({
+    queryKey: PREFERRED_ACCOUNTS_KEY,
+    queryFn: getPreferredAccountIds,
+    staleTime: Infinity,
+  });
+}
+
+export function useSetAccountPreferred() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: setAccountPreferred,
+    onSuccess: (preferredIds) => {
+      queryClient.setQueryData(PREFERRED_ACCOUNTS_KEY, preferredIds);
     },
   });
 }

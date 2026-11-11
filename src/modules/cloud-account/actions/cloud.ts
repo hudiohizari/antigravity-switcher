@@ -70,6 +70,17 @@ export async function getAutoSwitchModelsConfig(): Promise<
   return result as Record<string, { enabled: boolean; priority: boolean }>;
 }
 
+export function getPreferredAccountIds(): Promise<string[]> {
+  return ipc.client.cloud.getPreferredAccountIds();
+}
+
+export function setAccountPreferred(input: {
+  accountId: string;
+  preferred: boolean;
+}): Promise<string[]> {
+  return ipc.client.cloud.setAccountPreferred(input);
+}
+
 export function setAutoSwitchModelsConfig(
   config: Record<string, { enabled: boolean; priority: boolean }>,
 ) {

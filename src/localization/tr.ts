@@ -1082,6 +1082,10 @@ const tr = {
         "Kimlik bilgileri güncellendi: {{restartedTargets}} yeniden başlatıldı, {{injectedTargets}} için diske yazıldı.",
     },
     card: {
+      preferredAdd: "Tercih edilen olarak işaretle",
+      preferredRemove: "Tercih edilenlerden kaldır",
+      preferredHint:
+        "Otomatik geçiş önce tercih edilen hesapları, sonra diğerlerini kullanır.",
       active: "Aktif",
       use: "Kullan",
       rateLimited: "Hız Sınırına Takıldı",
