@@ -345,6 +345,8 @@ export class CloudMonitorService {
           }
           return;
         }
+        // Runs outside the poll lock so a long full poll cannot delay the image switch.
+        void this.checkImageExhaustion();
         this.pollActive().catch((e) =>
           logger.error("Scheduled active poll failed", e),
         );
@@ -355,6 +357,20 @@ export class CloudMonitorService {
   private static resetInterval() {
     if (this.intervalId || this.activeIntervalId) {
       this.startInterval();
+    }
+  }
+
+  /** Marks image-dry accounts and switches once per new image-generation 429. */
+  static async checkImageExhaustion(): Promise<void> {
+    try {
+      const exhaustion = await ImageQuotaExhaustionDetector.scan();
+      if (exhaustion) {
+        await AutoSwitchService.switchForImageExhaustion(exhaustion.accountId);
+        // Only after the attempt completes, so a failed switch retries next tick.
+        ImageQuotaExhaustionDetector.acknowledge(exhaustion.eventMs);
+      }
+    } catch (error) {
+      logger.warn("CloudMonitor: Image quota check failed", error);
     }
   }
 
@@ -411,11 +427,7 @@ export class CloudMonitorService {
     const epoch = this.stopEpoch;
     const refreshedAccounts: CloudAccount[] = [];
     logger.info("CloudMonitor: Polling quotas...");
-    try {
-      await ImageQuotaExhaustionDetector.scan();
-    } catch (error) {
-      logger.warn("CloudMonitor: Image quota scan failed", error);
-    }
+    await this.checkImageExhaustion();
     const allAccounts = await CloudAccountRepo.getAccounts();
     let now = Math.floor(Date.now() / 1000);
 

@@ -31,6 +31,10 @@ vi.mock(
   }),
 );
 
+vi.mock("@/modules/cloud-account/services/cloud-account-events", () => ({
+  cloudAccountEvents: { emit: vi.fn() },
+}));
+
 vi.mock("@/shared/platform/paths", () => ({
   getAntigravityBrainDir: () => store.brainDir,
 }));
@@ -97,7 +101,7 @@ describe("ImageQuotaExhaustionDetector", () => {
   it("marks the active account from an error after activation", async () => {
     writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
 
-    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBe(true);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).not.toBeNull();
     expect(store.marks).toEqual({
       "acc-1": { "gemini-3.1-flash-image": Date.parse(RESET) },
     });
@@ -106,11 +110,17 @@ describe("ImageQuotaExhaustionDetector", () => {
   it("ignores errors from before the switch and within the grace window", async () => {
     writeTranscript("conv-1", [
       errorLine("2026-11-10T23:59:00Z"),
-      errorLine("2026-11-11T00:00:30Z"),
+      errorLine("2026-11-11T00:00:02Z"),
     ]);
 
-    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBe(false);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
     expect(store.marks).toEqual({});
+  });
+
+  it("counts an error a few seconds after the switch", async () => {
+    writeTranscript("conv-1", [errorLine("2026-11-11T00:00:10Z")]);
+
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).not.toBeNull();
   });
 
   it("ignores errors whose reset already passed", async () => {
@@ -118,14 +128,14 @@ describe("ImageQuotaExhaustionDetector", () => {
       errorLine("2026-11-11T00:28:04Z", "2026-11-11T00:59:00Z"),
     ]);
 
-    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBe(false);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
   });
 
   it("skips attribution when targets use different accounts", async () => {
     store.state = { ...store.state, isPhysicallyUnified: false };
     writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
 
-    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBe(false);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
     expect(store.marks).toEqual({});
   });
 
@@ -133,8 +143,42 @@ describe("ImageQuotaExhaustionDetector", () => {
     store.since = {};
     writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
 
-    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBe(false);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
     expect(store.since.app).toBe(NOW);
     expect(store.marks).toEqual({});
+  });
+
+  it("reports each new 429 once, after it is acknowledged", async () => {
+    writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
+
+    const first = await ImageQuotaExhaustionDetector.scan(NOW);
+    expect(first).toEqual({
+      accountId: "acc-1",
+      eventMs: Date.parse("2026-11-11T00:28:04Z"),
+    });
+    ImageQuotaExhaustionDetector.acknowledge(first!.eventMs);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
+
+    writeTranscript("conv-2", [errorLine("2026-11-11T00:40:00Z")]);
+    expect((await ImageQuotaExhaustionDetector.scan(NOW))?.eventMs).toBe(
+      Date.parse("2026-11-11T00:40:00Z"),
+    );
+  });
+
+  it("keeps reporting an unacknowledged 429 even though its file is unchanged", async () => {
+    writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
+
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).not.toBeNull();
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).not.toBeNull();
+  });
+
+  it("stops reporting once a different account is active", async () => {
+    writeTranscript("conv-1", [errorLine("2026-11-11T00:28:04Z")]);
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).not.toBeNull();
+
+    store.state = { ...store.state, activeAccountId: "acc-2" };
+    store.since = { app: Date.parse("2026-11-11T00:50:00Z") };
+    expect(await ImageQuotaExhaustionDetector.scan(NOW)).toBeNull();
+    expect(store.marks["acc-2"]).toBeUndefined();
   });
 });

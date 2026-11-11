@@ -55,6 +55,11 @@ export function resolveQuotaGroupId(modelId: string): string {
   return normalized;
 }
 
+/** Image generation has its own limit, so it never counts toward chat depletion. */
+export function isImageModelId(modelId: string): boolean {
+  return resolveQuotaGroupId(modelId).includes("image");
+}
+
 interface AccountSelectionScore {
   priorityScore: number | null;
   bottleneck5h: number;
@@ -242,10 +247,13 @@ export class AutoSwitchService {
    * 3. Has quota >= 5% in the best available model of every enabled quota group.
    * 4. Preferred accounts first; within each group, ranked by highest remaining
    *    5h limit (bottleneck), then average 5h, then fallback.
+   * 5. Image-exhausted accounts: skipped when the switch is for images, otherwise
+   *    still usable for chat but ranked last within their group.
    */
   static async findBestAccount(
     currentAccountId: string,
     activeModel?: string,
+    needsImage = activeModel ? isImageModelId(activeModel) : false,
   ): Promise<CloudAccount | null> {
     const accounts = await CloudAccountRepo.getAccounts();
     const config =
@@ -260,17 +268,47 @@ export class AutoSwitchService {
       if (acc.id === currentAccountId) return false;
       if (acc.status !== "active") return false; // Rate limited or expired accounts are skipped
       if (!acc.quota) return false; // No quota data means risky
+      if (needsImage && this.isImageDepleted(acc)) return false;
 
       return !this.isAccountDepleted(acc, activeModel);
     });
 
     if (candidates.length === 0) return null;
 
-    const sorted = this.sortCandidates(candidates, config);
     const preferredIds = new Set(
       CloudAccountSettingsStore.getPreferredAccountIds(),
     );
-    return sorted.find((acc) => preferredIds.has(acc.id)) ?? sorted[0];
+    const tier = (acc: CloudAccount) =>
+      (preferredIds.has(acc.id) ? 0 : 2) + (this.isImageDepleted(acc) ? 1 : 0);
+    // Array.prototype.sort is stable, so quota ranking holds within each tier.
+    return (
+      this.sortCandidates(candidates, config).sort(
+        (a, b) => tier(a) - tier(b),
+      )[0] ?? null
+    );
+  }
+
+  /** True when every enabled image model of some image quota group is below the threshold. */
+  static isImageDepleted(account: CloudAccount): boolean {
+    const config =
+      CloudAccountSettingsStore.getSetting(
+        "auto_switch_models",
+        {},
+        AutoSwitchModelsConfigSchema,
+      ) || {};
+    const bestByGroup = new Map<string, number>();
+    for (const [modelId, model] of Object.entries(
+      account.quota?.models ?? {},
+    )) {
+      if (!isImageModelId(modelId)) continue;
+      if (this.getModelConfig(config, modelId)?.enabled === false) continue;
+      const group = resolveQuotaGroupId(modelId);
+      bestByGroup.set(
+        group,
+        Math.max(bestByGroup.get(group) ?? -1, model.percentage),
+      );
+    }
+    return [...bestByGroup.values()].some((percentage) => percentage < 5);
   }
 
   private static getModelConfig(
@@ -695,6 +733,69 @@ export class AutoSwitchService {
     return false;
   }
 
+  /**
+   * Reacts once to a new image-generation 429 on the active account by moving to
+   * an account that still has image quota. Chat turns do not block it, and with
+   * no image-fresh account it stays put without an exhaustion notice.
+   */
+  static async switchForImageExhaustion(accountId: string): Promise<boolean> {
+    const enabled = CloudAccountSettingsStore.getSetting(
+      "auto_switch_enabled",
+      false,
+      BooleanSettingSchema,
+    );
+    if (!enabled) return false;
+
+    const effectiveTarget = CloudAccountSettingsStore.isUnifiedMode()
+      ? "all"
+      : undefined;
+
+    return await runWithSwitchGuard("cloud-account-switch", async () => {
+      const activeId = CloudAccountSettingsStore.getActiveAccountIdForTarget(
+        effectiveTarget === "all" ? undefined : effectiveTarget,
+      );
+      if (activeId !== accountId) return false; // Already moved on.
+
+      const accounts = await CloudAccountRepo.getAccounts();
+      if (this.isCircuitBreakerTripped(accounts.length)) {
+        logger.warn(
+          "AutoSwitch (image): Switch loop circuit breaker tripped; not switching.",
+        );
+        return false;
+      }
+
+      const nextAccount = await this.findBestAccount(
+        accountId,
+        undefined,
+        true,
+      );
+      if (!nextAccount) {
+        logger.info(
+          "AutoSwitch (image): Image quota exhausted but no image-fresh account available; staying on current account.",
+        );
+        return false;
+      }
+
+      logger.info(
+        `AutoSwitch (image): Image quota exhausted; switching to ${nextAccount.email}...`,
+      );
+      await switchCloudAccount(nextAccount.id, effectiveTarget, {
+        source: "auto_switch",
+        reason: "quota_exhausted",
+      });
+      this.recordSwitch();
+      try {
+        new Notification({
+          title: "Antigravity Switcher: Auto-Switch",
+          body: `Switched account to ${nextAccount.email} because image generation quota ran out.`,
+        }).show();
+      } catch (err) {
+        logger.error("Failed to show auto-switch desktop notification", err);
+      }
+      return true;
+    });
+  }
+
   static getAccountModelQuota(account: CloudAccount, modelId?: string): number {
     if (!account.quota) return 0;
     if (!modelId) {
@@ -807,6 +908,7 @@ export class AutoSwitchService {
 
     const enabledModels = Object.entries(account.quota.models || {}).filter(
       ([modelId]) => {
+        if (isImageModelId(modelId)) return false;
         const modelConfig = this.getModelConfig(config, modelId);
         return modelConfig ? modelConfig.enabled : true;
       },

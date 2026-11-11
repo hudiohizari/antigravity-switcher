@@ -1,8 +1,10 @@
 import fs from "fs";
 import path from "path";
 import { CloudAccountSettingsStore } from "@/modules/cloud-account/persistence/cloud-account-settings-store";
+import { cloudAccountEvents } from "./cloud-account-events";
 import {
   type ImageQuotaExhaustionEvent,
+  type ImageQuotaMarks,
   mergeImageQuotaMark,
   parseImageQuotaExhaustion,
 } from "@/modules/cloud-account/utils/image-quota-exhaustion";
@@ -10,8 +12,11 @@ import { getAntigravityBrainDir } from "@/shared/platform/paths";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import { logger } from "@/shared/logging/logger";
 
-/** Errors this soon after a switch may still come from the previous account's session. */
-const ACTIVATION_GRACE_MS = 60_000;
+/**
+ * Activation is recorded after Antigravity restarts on the new account, so later
+ * errors belong to it; this only absorbs timestamp rounding between processes.
+ */
+const ACTIVATION_GRACE_MS = 5_000;
 const MAX_TRANSCRIPT_TAIL_BYTES = 8 * 1024 * 1024;
 const TRANSCRIPT_PATH = path.join(
   ".system_generated",
@@ -19,6 +24,11 @@ const TRANSCRIPT_PATH = path.join(
   "transcript.jsonl",
 );
 const BRAIN_TARGETS: AntigravityAppTarget[] = ["app", "ide"];
+
+export interface NewImageExhaustion {
+  accountId: string;
+  eventMs: number;
+}
 
 interface FileStamp {
   mtimeMs: number;
@@ -32,16 +42,40 @@ interface FileStamp {
  */
 export class ImageQuotaExhaustionDetector {
   private static scanned = new Map<string, FileStamp>();
+  /** Newest 429 already handled, so each failure triggers at most one switch. */
+  private static lastHandledEventMs = 0;
+  /** Newest 429 seen, kept because its transcript is not re-read once unchanged. */
+  private static latest: NewImageExhaustion | null = null;
+  private static inFlight: Promise<NewImageExhaustion | null> | null = null;
 
   static resetStateForTesting(): void {
     this.scanned.clear();
+    this.lastHandledEventMs = 0;
+    this.latest = null;
+    this.inFlight = null;
   }
 
-  /** Returns true when a new or later image-quota mark was recorded. */
-  static async scan(nowMs = Date.now()): Promise<boolean> {
+  /**
+   * Records image-quota marks and returns the active account when a 429 newer
+   * than the last handled one was found; call acknowledge() once it is handled.
+   */
+  static scan(nowMs = Date.now()): Promise<NewImageExhaustion | null> {
+    this.inFlight ??= this.runScan(nowMs).finally(() => {
+      this.inFlight = null;
+    });
+    return this.inFlight;
+  }
+
+  static acknowledge(eventMs: number): void {
+    this.lastHandledEventMs = Math.max(this.lastHandledEventMs, eventMs);
+  }
+
+  private static async runScan(
+    nowMs: number,
+  ): Promise<NewImageExhaustion | null> {
     const state = CloudAccountSettingsStore.getOperationalState();
     if (!state.isPhysicallyUnified || !state.activeAccountId) {
-      return false;
+      return null;
     }
 
     const targets: AntigravityAppTarget[] =
@@ -49,7 +83,7 @@ export class ImageQuotaExhaustionDetector {
     const countFromMs =
       this.resolveActiveSince(targets, nowMs) + ACTIVATION_GRACE_MS;
     if (countFromMs > nowMs) {
-      return false;
+      return null;
     }
 
     const events: ImageQuotaExhaustionEvent[] = [];
@@ -63,36 +97,59 @@ export class ImageQuotaExhaustionDetector {
     const fresh = events.filter(
       (event) => event.occurredAtMs >= countFromMs && event.resetAtMs > nowMs,
     );
-    if (fresh.length === 0) {
-      return false;
+    if (fresh.length > 0) {
+      const newestMs = Math.max(...fresh.map((event) => event.occurredAtMs));
+      if (newestMs > (this.latest?.eventMs ?? 0)) {
+        this.latest = { accountId: state.activeAccountId, eventMs: newestMs };
+      }
+      this.recordMarks(state.activeAccountId, fresh, nowMs);
     }
 
+    const latest = this.latest;
+    return latest &&
+      latest.accountId === state.activeAccountId &&
+      latest.eventMs >= countFromMs &&
+      latest.eventMs > this.lastHandledEventMs
+      ? latest
+      : null;
+  }
+
+  private static recordMarks(
+    accountId: string,
+    fresh: ImageQuotaExhaustionEvent[],
+    nowMs: number,
+  ): void {
     const before = CloudAccountSettingsStore.getImageQuotaMarks();
     let marks = before;
     for (const event of fresh) {
-      marks = mergeImageQuotaMark(marks, state.activeAccountId, event, nowMs);
+      marks = mergeImageQuotaMark(marks, accountId, event, nowMs);
     }
-    const accountBefore = before[state.activeAccountId] ?? {};
-    const accountAfter = marks[state.activeAccountId] ?? {};
+    const accountBefore = before[accountId] ?? {};
+    const accountAfter = marks[accountId] ?? {};
     const changed = Object.entries(accountAfter).some(
       ([model, resetAtMs]) => accountBefore[model] !== resetAtMs,
     );
-    if (!changed) {
-      return false;
+    if (changed) {
+      this.saveMarks(accountId, marks, accountAfter);
     }
+  }
 
+  private static saveMarks(
+    accountId: string,
+    marks: ImageQuotaMarks,
+    accountAfter: Record<string, number>,
+  ): void {
     CloudAccountSettingsStore.setImageQuotaMarks(marks);
+    // Lets the window and tray re-read the account so the image row turns red now.
+    cloudAccountEvents.emit("account:quota_updated", { accountId });
     logger.warn(
-      `ImageQuota: account ${state.activeAccountId} exhausted ${Object.entries(
-        accountAfter,
-      )
+      `ImageQuota: account ${accountId} exhausted ${Object.entries(accountAfter)
         .map(
           ([model, resetAtMs]) =>
             `${model} until ${new Date(resetAtMs).toISOString()}`,
         )
         .join(", ")}`,
     );
-    return true;
   }
 
   /** Latest activation across installed targets; unknown times start now so older errors never count. */

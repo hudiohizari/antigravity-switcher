@@ -941,4 +941,185 @@ describe("AutoSwitchService", () => {
       expect(switchedEmissions).toHaveLength(0);
     });
   });
+
+  describe("image-exhausted accounts", () => {
+    function chatAndImage(chat: number, image: number): CloudQuotaData {
+      return {
+        models: {
+          "gemini-3.5-flash": { percentage: chat, resetTime: "" },
+          "gemini-3.1-flash-image": { percentage: image, resetTime: "" },
+        },
+      };
+    }
+
+    async function load(accounts: CloudAccount[], preferredIds: string[] = []) {
+      const { CloudAccountRepo } =
+        await import("@/modules/cloud-account/persistence/cloudHandler");
+      const { CloudAccountSettingsStore } =
+        await import("@/modules/cloud-account/persistence/cloud-account-settings-store");
+      const { AutoSwitchService } =
+        await import("@/modules/cloud-account/services/AutoSwitchService");
+      vi.mocked(CloudAccountRepo.getAccounts).mockResolvedValue(accounts);
+      vi.mocked(
+        CloudAccountSettingsStore.getPreferredAccountIds,
+      ).mockReturnValue(preferredIds);
+      return { AutoSwitchService, CloudAccountSettingsStore };
+    }
+
+    it("does not count an image-dry account as depleted for chat", async () => {
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([]);
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+      const account = createAccount("a", chatAndImage(100, 0));
+
+      expect(AutoSwitchService.isAccountDepleted(account)).toBe(false);
+      expect(AutoSwitchService.isImageDepleted(account)).toBe(true);
+      expect(
+        AutoSwitchService.isAccountDepleted(account, "gemini-3.1-flash-image"),
+      ).toBe(true);
+    });
+
+    it("still uses image-dry accounts for chat but ranks them last in their group", async () => {
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(1, 100)),
+        createAccount("image-dry-more-chat", chatAndImage(100, 0)),
+        createAccount("image-fresh-less-chat", chatAndImage(40, 100)),
+      ]);
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+
+      expect((await AutoSwitchService.findBestAccount("current"))?.id).toBe(
+        "image-fresh-less-chat",
+      );
+    });
+
+    it("falls back to an image-dry account for chat when it is the only option", async () => {
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(1, 100)),
+        createAccount("image-dry", chatAndImage(100, 0)),
+      ]);
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+
+      expect((await AutoSwitchService.findBestAccount("current"))?.id).toBe(
+        "image-dry",
+      );
+    });
+
+    it("keeps preferred accounts ahead of regular ones even when image-dry", async () => {
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load(
+        [
+          createAccount("current", chatAndImage(1, 100)),
+          createAccount("regular-fresh", chatAndImage(90, 100)),
+          createAccount("preferred-image-dry", chatAndImage(60, 0)),
+        ],
+        ["preferred-image-dry"],
+      );
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+
+      expect((await AutoSwitchService.findBestAccount("current"))?.id).toBe(
+        "preferred-image-dry",
+      );
+    });
+
+    it("never picks an image-dry account for an image switch", async () => {
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load(
+        [
+          createAccount("current", chatAndImage(100, 0)),
+          createAccount("preferred-image-dry", chatAndImage(100, 0)),
+          createAccount("regular-image-fresh", chatAndImage(30, 100)),
+        ],
+        ["preferred-image-dry"],
+      );
+      vi.mocked(CloudAccountSettingsStore.getSetting).mockReturnValue({});
+
+      expect(
+        (await AutoSwitchService.findBestAccount("current", undefined, true))
+          ?.id,
+      ).toBe("regular-image-fresh");
+      expect(
+        (
+          await AutoSwitchService.findBestAccount(
+            "current",
+            "gemini-3.1-flash-image",
+          )
+        )?.id,
+      ).toBe("regular-image-fresh");
+    });
+
+    function enableAutoSwitch(store: {
+      getSetting: unknown;
+      isUnifiedMode: unknown;
+      getActiveAccountIdForTarget: unknown;
+    }) {
+      vi.mocked(
+        store.getSetting as never as (k: string, f: unknown) => unknown,
+      ).mockImplementation(((key: string, fallback: unknown) =>
+        key === "auto_switch_enabled" ? true : fallback) as never);
+      vi.mocked(store.isUnifiedMode as () => boolean).mockReturnValue(true);
+      vi.mocked(
+        store.getActiveAccountIdForTarget as (t?: string) => string,
+      ).mockReturnValue("current");
+    }
+
+    it("does not bounce off an image-dry account on a routine check", async () => {
+      const { switchCloudAccount } =
+        await import("@/modules/cloud-account/ipc/handler");
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(100, 0), { is_active: true }),
+        createAccount("image-fresh", chatAndImage(50, 100)),
+      ]);
+      enableAutoSwitch(CloudAccountSettingsStore);
+
+      expect(await AutoSwitchService.checkAndSwitchIfNeeded()).toBe(false);
+      expect(switchCloudAccount).not.toHaveBeenCalled();
+    });
+
+    it("switches to an image-fresh account on a new image 429", async () => {
+      const { switchCloudAccount } =
+        await import("@/modules/cloud-account/ipc/handler");
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(100, 0), { is_active: true }),
+        createAccount("other-image-dry", chatAndImage(100, 0)),
+        createAccount("image-fresh", chatAndImage(50, 100)),
+      ]);
+      enableAutoSwitch(CloudAccountSettingsStore);
+
+      expect(await AutoSwitchService.switchForImageExhaustion("current")).toBe(
+        true,
+      );
+      expect(switchCloudAccount).toHaveBeenCalledWith("image-fresh", "all", {
+        source: "auto_switch",
+        reason: "quota_exhausted",
+      });
+    });
+
+    it("stays quietly when no account has image quota left", async () => {
+      const { switchCloudAccount } =
+        await import("@/modules/cloud-account/ipc/handler");
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(100, 0), { is_active: true }),
+        createAccount("also-image-dry", chatAndImage(100, 0)),
+      ]);
+      enableAutoSwitch(CloudAccountSettingsStore);
+
+      expect(await AutoSwitchService.switchForImageExhaustion("current")).toBe(
+        false,
+      );
+      expect(switchCloudAccount).not.toHaveBeenCalled();
+      expect(mockNotificationShow).not.toHaveBeenCalled();
+    });
+
+    it("ignores a 429 for an account that is no longer active", async () => {
+      const { switchCloudAccount } =
+        await import("@/modules/cloud-account/ipc/handler");
+      const { AutoSwitchService, CloudAccountSettingsStore } = await load([
+        createAccount("current", chatAndImage(100, 100), { is_active: true }),
+        createAccount("image-fresh", chatAndImage(50, 100)),
+      ]);
+      enableAutoSwitch(CloudAccountSettingsStore);
+
+      expect(
+        await AutoSwitchService.switchForImageExhaustion("previous-account"),
+      ).toBe(false);
+      expect(switchCloudAccount).not.toHaveBeenCalled();
+    });
+  });
 });
