@@ -8,6 +8,11 @@ overrides:
   handlebars: ^4.7.9
   tar: ^7.5.22
 
+patchedDependencies:
+  electron-installer-redhat@3.4.0:
+    hash: 8fe238a56db4de235c10dd7f02c6a523c6ac3010edcc1d547dbc5c6416b89a37
+    path: patches/electron-installer-redhat@3.4.0.patch
+
 importers:
 
   .:
@@ -576,7 +581,7 @@ packages:
     engines: {node: '>=14'}
 
   '@electron/node-gyp@https://codeload.github.com/electron/node-gyp/tar.gz/06b29aafb7708acef8b3669835c8a7857ebc92d2':
-    resolution: {gitHosted: true, tarball: https://codeload.github.com/electron/node-gyp/tar.gz/06b29aafb7708acef8b3669835c8a7857ebc92d2}
+    resolution: {gitHosted: true, integrity: sha512-MXgzlTDEEndJB3TBbvd5uFQO/8gaINo1Hfen8vef5rq/VHVPeB63uuv/uO5+8GFsAJ/rauu6XB79S6K4+aXc+w==, tarball: https://codeload.github.com/electron/node-gyp/tar.gz/06b29aafb7708acef8b3669835c8a7857ebc92d2}
     version: 10.2.0-electron.1
     engines: {node: '>=12.13.0'}
     hasBin: true
@@ -3139,6 +3144,7 @@ packages:
 
   electron-squirrel-startup@1.0.1:
     resolution: {integrity: sha512-sTfFIHGku+7PsHLJ7v0dRcZNkALrV+YEozINTW8X1nM//e5O3L+rfYuvSW00lmGHnYmUjARZulD8F2V8ISI9RA==}
+    deprecated: This package is archived and deprecated, it will not get any updates.
 
   electron-to-chromium@1.5.422:
     resolution: {integrity: sha512-UvA/32XqrLDdZSn7Jllo1AYNcWji/G0d5M0GTViE7KoGBiMunw3a34Sb2KO4ZZyrSEhqsxFoVhWWJshdyfKqJA==}
@@ -3638,6 +3644,7 @@ packages:
   image-size@0.7.5:
     resolution: {integrity: sha512-Hiyv+mXHfFEP7LzUL/llg9RwFxxY+o9N3JVLIeG5E7iFIFAalxvRU9UZthBdYDEVnzHMgjnKJPPpay5BWf1g9g==}
     engines: {node: '>=6.9.0'}
+    deprecated: Please migrate to image-size@2.x
     hasBin: true
 
   imul@1.0.1:
@@ -5893,7 +5900,7 @@ snapshots:
       '@electron-forge/maker-base': 7.11.2
       '@electron-forge/shared-types': 7.11.2
     optionalDependencies:
-      electron-installer-redhat: 3.4.0
+      electron-installer-redhat: 3.4.0(patch_hash=8fe238a56db4de235c10dd7f02c6a523c6ac3010edcc1d547dbc5c6416b89a37)
     transitivePeerDependencies:
       - bluebird
       - supports-color
@@ -8517,7 +8524,7 @@ snapshots:
       - supports-color
     optional: true
 
-  electron-installer-redhat@3.4.0:
+  electron-installer-redhat@3.4.0(patch_hash=8fe238a56db4de235c10dd7f02c6a523c6ac3010edcc1d547dbc5c6416b89a37):
     dependencies:
       '@malept/cross-spawn-promise': 1.1.1
       debug: 4.4.3
