@@ -10,6 +10,7 @@ import {
 } from "./SessionContinuityBuffer";
 import { chatResumeEvents } from "./telemetry";
 import type {
+  ChatResumeSwitchSource,
   ChatResumptionStatus,
   ChatResumptionStatusPayload,
   InFlightChatSnapshot,
@@ -135,6 +136,21 @@ export function extractCsrfTokenFromHtml(html: string): string | null {
   }
 
   return null;
+}
+
+export const QUOTA_SWITCH_RESUME_PROMPT =
+  "Quota restored (account switched). Retry the step that hit 429 and continue the task.";
+export const ACCOUNT_SWITCH_RESUME_PROMPT =
+  "Account switched mid-task. Continue the task where you stopped.";
+
+// Auto-switch only fires on quota exhaustion, so the agent is told the quota
+// is back; otherwise it tends to report the old 429 and stop.
+export function interruptedResumePrompt(
+  source: ChatResumeSwitchSource | undefined,
+): string {
+  return source === "auto_switch"
+    ? QUOTA_SWITCH_RESUME_PROMPT
+    : ACCOUNT_SWITCH_RESUME_PROMPT;
 }
 
 export function isTransientConnectionError(
@@ -604,7 +620,7 @@ export class ChatResumeDispatcher {
       ];
 
       const promptText = snapshot.isInterrupted
-        ? "Continue your previous response."
+        ? interruptedResumePrompt(snapshot.source)
         : snapshot.promptPayload.prompt;
       const existingConfig =
         snapshot.promptPayload.cascadeConfig &&

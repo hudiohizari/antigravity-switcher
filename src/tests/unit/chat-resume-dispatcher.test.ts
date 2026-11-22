@@ -10,6 +10,8 @@ import {
   isValidProtoModelEnum,
   normalizeModelToProtoEnum,
   type HttpRequester,
+  ACCOUNT_SWITCH_RESUME_PROMPT,
+  QUOTA_SWITCH_RESUME_PROMPT,
 } from "@/modules/chat-resume/ChatResumeDispatcher";
 import { SessionContinuityBuffer } from "@/modules/chat-resume/SessionContinuityBuffer";
 import { chatResumeEvents } from "@/modules/chat-resume/telemetry";
@@ -400,36 +402,56 @@ describe("ChatResumeDispatcher", () => {
       expect(requestBody.cascadeConfig.plannerConfig).toBeUndefined();
     });
 
-    it("dispatches continuation prompt 'Continue your previous response.' when snapshot isInterrupted is true", async () => {
+    it.each([
+      ["auto_switch", QUOTA_SWITCH_RESUME_PROMPT],
+      ["manual_switch", ACCOUNT_SWITCH_RESUME_PROMPT],
+      ["tray", ACCOUNT_SWITCH_RESUME_PROMPT],
+      ["manual", ACCOUNT_SWITCH_RESUME_PROMPT],
+      ["resync", ACCOUNT_SWITCH_RESUME_PROMPT],
+      [undefined, ACCOUNT_SWITCH_RESUME_PROMPT],
+    ] as const)(
+      "resumes an interrupted turn from a %s switch with the matching prompt",
+      async (source, expectedPrompt) => {
+        const snapshot = buffer.store({
+          appTarget: "app",
+          cascadeId: `cascade-interrupted-${source}`,
+          promptPayload: {
+            prompt: "The user original question",
+            requestedModel: "gemini-3.8-flash-high",
+          },
+          isInterrupted: true,
+          ...(source ? { source } : {}),
+        });
+
+        mockRequester.mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          data: JSON.stringify({ messageId: "msg-cont" }),
+        });
+
+        const result = await dispatcher.dispatchSnapshot(snapshot, 9000, "valid-csrf");
+
+        expect(result.success).toBe(true);
+        const body = JSON.parse(mockRequester.mock.calls.at(-1)![1].body);
+        expect(body.items[0].text).toBe(expectedPrompt);
+        expect(body.prompt).toBe(expectedPrompt);
+      },
+    );
+
+    it("re-sends the original prompt when the turn was not interrupted", async () => {
       const snapshot = buffer.store({
         appTarget: "app",
-        cascadeId: "cascade-interrupted",
-        promptPayload: {
-          prompt: "The user original question",
-          requestedModel: "gemini-3.8-flash-high",
-        },
-        isInterrupted: true,
+        cascadeId: "cascade-not-started",
+        promptPayload: { prompt: "The user original question" },
+        isInterrupted: false,
+        source: "auto_switch",
       });
+      mockRequester.mockResolvedValueOnce({ status: 200, headers: {}, data: "{}" });
 
-      mockRequester.mockResolvedValueOnce({
-        status: 200,
-        headers: {},
-        data: JSON.stringify({ messageId: "msg-cont" }),
-      });
+      await dispatcher.dispatchSnapshot(snapshot, 9000, "valid-csrf");
 
-      const result = await dispatcher.dispatchSnapshot(
-        snapshot,
-        9000,
-        "valid-csrf",
-      );
-
-      expect(result.success).toBe(true);
-      expect(mockRequester).toHaveBeenCalledWith(
-        "https://127.0.0.1:9000/exa.language_server_pb.LanguageServerService/SendUserCascadeMessage",
-        expect.objectContaining({
-          body: expect.stringContaining("Continue your previous response."),
-        }),
-      );
+      const body = JSON.parse(mockRequester.mock.calls.at(-1)![1].body);
+      expect(body.items[0].text).toBe("The user original question");
     });
 
     it("does not silently downgrade model on 403 quota error; cleanly aborts and preserves prompt in draft scratch", async () => {
