@@ -142,6 +142,17 @@ export function extractCsrfTokenFromHtml(html: string): string | null {
   return null;
 }
 
+// Antigravity >= 2.34 serves `csrfToken:""` and hands its own window a one-time
+// `#t=` token instead, which a paired relay client never gets; with an empty
+// token the UI sends no RPC. The UI also carries the token in websocket frames
+// and `?csrf=` URLs, so give relay clients the real token, as pre-2.34 pages did.
+export function withRelayCsrfToken(html: string, token: string): string {
+  return html.replace(
+    /("?csrfToken"?\s*:\s*)""/,
+    (_m, prefix: string) => `${prefix}${JSON.stringify(token)}`,
+  );
+}
+
 export function isUpstreamCsrfError(
   statusCode: number,
   bodyText: string,
@@ -2882,11 +2893,17 @@ export class RelayServer {
             upstreamRes.statusCode === 200 &&
             contentType.includes("text/html")
           ) {
-            const rawHtml = await upstreamRes.body.text();
-            const harvestedToken = extractCsrfTokenFromHtml(rawHtml);
+            const upstreamHtml = await upstreamRes.body.text();
+            const harvestedToken = extractCsrfTokenFromHtml(upstreamHtml);
             if (harvestedToken) {
               this.activeCsrfToken = harvestedToken;
             }
+            const relayToken = harvestedToken
+              ? null
+              : (this.activeCsrfToken ?? (await this.refreshCsrfToken(port)));
+            const rawHtml = relayToken
+              ? withRelayCsrfToken(upstreamHtml, relayToken)
+              : upstreamHtml;
 
             if (this.config.injectAutoReload === false) {
               for (const [headerName, headerVal] of Object.entries(

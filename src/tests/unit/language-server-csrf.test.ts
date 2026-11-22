@@ -12,6 +12,7 @@ vi.mock("node:fs/promises", () => {
 });
 
 import { readLanguageServerCsrfFromProcess } from "@/shared/platform/languageServerCsrf";
+import { withRelayCsrfToken } from "@/modules/relay/relay-server";
 
 type Call = { cmd: string; args: string[] };
 let calls: Call[] = [];
@@ -86,5 +87,17 @@ describe("readLanguageServerCsrfFromProcess", () => {
     reply(() => new Error("should not run"));
     await expect(readLanguageServerCsrfFromProcess(1)).resolves.toBeNull();
     expect(calls).toHaveLength(0);
+  });
+});
+
+describe("withRelayCsrfToken", () => {
+  it("fills the empty csrfToken Antigravity 2.34 serves", () => {
+    const html = `<script>window.__APP_CONFIG__ = {"productName":"antigravity","csrfToken":"","appVersion":"2.34.0"};</script>`;
+    expect(withRelayCsrfToken(html, "abc-123")).toContain(`"csrfToken":"abc-123"`);
+  });
+
+  it("leaves a page that already has a token untouched", () => {
+    const html = `{"csrfToken":"real"}`;
+    expect(withRelayCsrfToken(html, "other")).toBe(html);
   });
 });
