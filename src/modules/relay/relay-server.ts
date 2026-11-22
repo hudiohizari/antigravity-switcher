@@ -27,6 +27,7 @@ import { PortDiscoveryService } from "./port-discovery";
 import { isRateLimitError } from "@/modules/cloud-account/utils/account-status";
 import { getRecommendedLocalIp } from "@/shared/platform/network";
 import { logger } from "@/shared/logging/logger";
+import { readLanguageServerCsrfFromProcess } from "@/shared/platform/languageServerCsrf";
 
 export interface RelayServerOptions {
   config?: Partial<RelayConfig>;
@@ -1883,27 +1884,35 @@ export class RelayServer {
     let probePromise: Promise<string | null> | null = null;
     probePromise = (async () => {
       try {
-        const upstreamUrl = `https://127.0.0.1:${port}/`;
-        const res = await undiciRequest(upstreamUrl, {
-          method: "GET",
-          headers: {
-            host: `127.0.0.1:${port}`,
-            accept: "text/html",
-          },
-          dispatcher: this.upstreamDispatcher,
-          signal: controller.signal,
-        });
+        try {
+          const upstreamUrl = `https://127.0.0.1:${port}/`;
+          const res = await undiciRequest(upstreamUrl, {
+            method: "GET",
+            headers: {
+              host: `127.0.0.1:${port}`,
+              accept: "text/html",
+            },
+            dispatcher: this.upstreamDispatcher,
+            signal: controller.signal,
+          });
 
-        if (res.statusCode === 200) {
-          const html = await res.body.text();
-          const token = extractCsrfTokenFromHtml(html);
-          if (token) {
-            this.activeCsrfToken = token;
-            return token;
+          if (res.statusCode === 200) {
+            const html = await res.body.text();
+            const token = extractCsrfTokenFromHtml(html);
+            if (token) {
+              this.activeCsrfToken = token;
+              return token;
+            }
           }
+        } catch {
+          // Fall through to the process-env lookup.
         }
-        return null;
-      } catch {
+        const token = await readLanguageServerCsrfFromProcess(port);
+        // A port change swaps the controller out; a plain probe timeout does not.
+        if (token && this.csrfRefreshController === controller) {
+          this.activeCsrfToken = token;
+          return token;
+        }
         return null;
       } finally {
         clearTimeout(timeoutId);

@@ -3,6 +3,7 @@ import http from "node:http";
 import type { AntigravityAppTarget } from "@/shared/platform/antigravityAppTarget";
 import type { PortDiscoveryService } from "@/modules/relay/port-discovery";
 import { logger } from "@/shared/logging/logger";
+import { readLanguageServerCsrfFromProcess } from "@/shared/platform/languageServerCsrf";
 import {
   sessionContinuityBuffer,
   SessionContinuityBuffer,
@@ -485,7 +486,9 @@ export class ChatResumeDispatcher {
 
       // Step 1: Extract CSRF token if not yet obtained
       if (!csrfToken) {
-        csrfToken = await this.extractCsrfToken(port, options?.signal);
+        csrfToken =
+          (await this.extractCsrfToken(port, options?.signal)) ??
+          (await readLanguageServerCsrfFromProcess(port));
       }
 
       if (options?.signal?.aborted) {
